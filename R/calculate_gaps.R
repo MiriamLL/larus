@@ -22,14 +22,14 @@ calculate_gaps<-function(GPS_data=GPS_data,
   #obtiene para cada elemento de la lista
   for( i in seq_along(trips_list)){
 
-    trip_df<-trips_list[[i]]
+    trip_df<-trips_list[[1]]
 
     times<-trip_df[[column_datetime]]
-    times_lag<-stats::lag(times)
+    times_lag<-dplyr::lag(times)
     time_dif<-as.numeric(difftime(times,times_lag, units="mins"))
     trip_df$timedif_min<-round(time_dif,2)
 
-    gaps_list[[i]]<-trip_df
+    gaps_list[[1]]<-trip_df
 
   }
 

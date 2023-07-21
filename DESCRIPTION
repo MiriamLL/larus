@@ -16,4 +16,4 @@ LazyData: true
 URL: https://github.com/MiriamLL/larus
 BugReports: https://github.com/MiriamLL/larus/issues
 Imports: 
-    stats
+    dplyr
