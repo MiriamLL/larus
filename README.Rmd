@@ -1,0 +1,138 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# larus
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of larus is to ...
+
+## Installation
+
+You can install the development version of larus from [GitHub](https://github.com/) with:
+
+```{r,eval=FALSE}
+# install.packages("devtools")
+devtools::install_github("MiriamLL/larus")
+```
+
+# Data
+
+## gull_data
+
+Contains data from one gull tagged at La Paz, Mexico
+
+```{r,echo=FALSE,eval=FALSE}
+#load packages
+library(tidyverse)
+#load data
+LALIS_1807 <- read_csv("~/03Academico/01MS/01EnPreparacion/MS4 Lali/2023/02Jul/1Data/LALIS_1807.csv")
+range(LALIS_1807$timestamp)
+#rename columns
+LALIS<-LALIS_1807 %>%
+  filter(timestamp > '2023-04-20 00:00:00 UTC' & timestamp > '2023-04-27 00:00:00 UTC')
+LALIS<-LALIS %>%
+  select(timestamp,location.long,location.lat,individual.local.identifier)
+LALIS$Longitude<-LALIS$location.long
+LALIS$Latitude<-LALIS$location.lat
+#identify trips
+LALI02<-LALIS%>%
+  filter(individual.local.identifier=='LALI02')
+#devtools::install_github("MiriamLL/sula")
+library(sula)
+colony<-data.frame(Longitude=-110.338935,Latitude=24.287935)
+LALIS_trips<-identificar_viajes(GPS_data=LALI02,
+                        nest_loc=colony,
+                        distancia_km=1)
+LALIS_trips$at_sea<-LALIS_trips$trip
+LALIS_atsea<-contar_viajes(GPS_data=LALIS_trips)
+gull_data<-LALIS_atsea %>%
+  select(individual.local.identifier,
+         Longitude,Latitude,
+         timestamp,
+         at_sea,
+         trip_number)%>%
+  rename(ID=individual.local.identifier,
+         DateTime=timestamp)
+ggplot()+
+  geom_point(data=gull_data, aes(x=Longitude,y=Latitude,color=trip_number))+
+  theme_minimal()+
+  theme(legend.position = 'none')
+gull_data<-gull_data[1:1458,]
+save(gull_data, file = "gull_data.RData", version = 2)
+#usethis::use_r("gull_data")
+devtools::document()
+devtools::check()
+```
+
+```{r}
+library(larus)
+```
+
+```{r}
+gull_data<-gull_data
+```
+
+
+## Functions
+
+Find gaps
+
+```{r, echo=FALSE, eval=FALSE}
+calculate_gaps<-function(GPS_data=GPS_data,
+                         column_datetime=column_datetime,
+                         column_tripnumber=column_tripnumber){
+  
+  GPS_data$column_tripnumber<-(GPS_data[[column_tripnumber]])
+  
+  trips_list<-split(GPS_data,GPS_data$column_tripnumber)
+  
+  gaps_list<-list()
+  
+  #obtiene para cada elemento de la lista
+  for( i in seq_along(trips_list)){
+    
+    trip_df<-trips_list[[i]]
+
+    times<-trip_df[[column_datetime]]
+    times_lag<-lag(times)
+    time_dif<-as.numeric(difftime(times,times_lag, units="mins"))
+    trip_df$timedif_min<-round(time_dif,2)
+    
+  gaps_list[[i]]<-trip_df
+  
+  }
+  
+  gaps_df<- do.call("rbind",gaps_list)
+  
+  gaps_df$column_tripnumber<-NULL
+
+  return(gaps_df)
+}
+```
+
+```{r}
+gull_gaps<-calculate_gaps(GPS_data = gull_data,
+                          column_datetime = 'DateTime',
+                          column_tripnumber = 'trip_number')
+```
+
+```{r}
+range(gull_gaps$timedif_min,na.rm=TRUE)
+```
+
+
+
