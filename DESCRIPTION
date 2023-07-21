@@ -1,14 +1,17 @@
 Package: larus
-Title: What the Package Does (One Line, Title Case)
+Title: functions to manipulate continuous recording tracking devices
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Date: 2023-07-21
+Authors@R:
+  person(given = "Miriam",family = "Lerma",
+         role = c("aut", "cre"),
+         email = "miriamjlerma@gmail.com",
+         comment = c(ORCID = "0000-0002-7632-9289"))
+Description: functions to manipulate data obtained from continuous recording tracking devices.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.2
+LazyData: true
 URL: https://github.com/MiriamLL/larus
 BugReports: https://github.com/MiriamLL/larus/issues
