@@ -6,7 +6,24 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of larus is to …
+The goal of larus is to
+
+Provide data example
+
+Identify foraging trips from a central location Using: a buffer
+converting dt to st using over add a trip number keep the sequence
+
+Identify is trips are valid by: calculating gaps between locations
+evaluate if trips are valid by checking thresholds (e.g. minimum
+duration away from the colony) lenght paths requeire at least 3
+locations per forafging trip exclude trips where the bird was constantly
+moving from central location
+
+recalculate foraging trips changing central locations
+
+Interpolate without: overestimating resting locations at night (make a
+filter of trips \<24 hrs) add a classification trip good for calculating
+foraging parameters trip good for interpolation
 
 ## Installation
 
@@ -262,8 +279,6 @@ Here’s a breakdown of considerations to help you decide:
   location and surrounding environmental context (such as weather, time
   of day, etc.).
 
-## classify_long_or_short_gap
-
 # Battery
 
 ``` r
@@ -274,4 +289,27 @@ library(scales)
 ggplot(LALI02_01locs, aes(x=daytime, y=battery.charge.percent)) +
   geom_line() +
   scale_x_datetime(labels = date_format("%b"),date_breaks = "1 month")
+```
+
+# Classify
+
+Based on the trip parameters, add a column in the locations if the trip
+would be interpolated or not.
+
+Foraging trips were only considered when lasting longer than 30 min
+
+``` r
+LALI02_threshold_id<<-unique(LALI02_04params %>%
+  filter(duration > 0.5))$trip_id
+```
+
+``` r
+LALI02_04locs_trips<- LALI02_03locs %>%
+  filter(trip_number %in% LALI02_threshold_id)
+```
+
+If trips are longer than 1 hr, then the parameters are calculable.
+
+``` r
+LALI02_04locs_trips$params<-'calculable'
 ```
