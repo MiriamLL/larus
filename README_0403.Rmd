@@ -346,54 +346,115 @@ plot_trips<-function(my_locs=my_locs,my_central_location=my_central_location){
 plot_trips(my_locs=Trips_03trips,my_central_location=my_central_location)
 ```
 
-### Step 6: check parameters
+### Step 6: calculate_params
 
-```{r}
-library(sula)
+```{r, eval=FALSE, echo=FALSE}
+GSM_trips<-Trips_03trips
+GSM_trips<-GSM_trips %>%
+  select(ID,trip_number,num_seq,
+         daytime,season,month,
+         Longitude,Latitude,
+         inside,central_base,
+         battery_charge,gaps_min)
+#Move to folder data
+save(GSM_trips, file = "GSM_trips.RData", version = 2)
+#Run in console, not Rmd
+usethis::use_r("GSM_trips")
+devtools::document()
+devtools::check()
+```
+
+```{r, echo=FALSE, eval=FALSE}
+usethis::use_r("calculate_params")
+#' Calculates trip duration using locations, and gap intervals per trip
+#'
+#' @param my_locs a data frame with all locations
+#' @param my_daytime the name of the column where day and time information is provided
+#' @param my_format the format in the column POSTIXct
+#' @param my_units pick "hours", "minutes", "seconds".
+#' @param my_separator a column to separate trips, for example 'trip_number'
+#'
+#' @return regresa un nuevo data frame con la información del viaje, cuando inicio, cuando termino y la duración
+#' @export
+#'
+# @examples GSM_params<-calculate_params(my_locs=GSM_trips,my_daytime='daytime',my_format="%Y-%m-%d %H:%M:%S",my_units="hours",my_separator="trip_number")
+calculate_params<-function(my_locs=my_locs,
+                           my_daytime=my_daytime,
+                           my_format=my_format,
+                           my_units=my_units,
+                           my_separator=my_separator
+){
+
+
+  if (!is.null(my_locs[[my_separator]])) {
+  }
+  else {
+    warning("Please check the name on the separator column")
+  }
+  if (!is.null(my_locs[[my_daytime]])) {
+  }
+  else {
+    warning("Please check the name in my_daytime")
+  }
+  my_locs$my_separator <- (my_locs[[my_separator]])
+  trips_list <- split(my_locs, my_locs$my_separator)
+  duration_list <- list()
+  for (i in seq_along(trips_list)) {
+    trips_df <- trips_list[[i]]
+    trip_start <- dplyr::first(trips_df[[my_daytime]])
+    trip_end <- dplyr::last(trips_df[[my_daytime]])
+    trip_id <- dplyr::first(trips_df[[my_separator]])
+    duration_list[[i]] <- nest_loc <- data.frame(trip_id = trip_id,
+                                                 trip_start = trip_start, trip_end = trip_end)
+  }
+  duration_merged <- do.call("rbind", duration_list)
+  duration_merged$trip_start <- as.POSIXct(strptime(duration_merged$trip_start,
+                                                    my_format), "GMT")
+  duration_merged$trip_end <- as.POSIXct(strptime(duration_merged$trip_end,
+                                                  my_format), "GMT")
+  duration_merged$duration <- as.numeric(difftime(duration_merged$trip_end,
+                                                  duration_merged$trip_start, units = my_units))
+
+  gaps_params<-my_locs %>%
+    dplyr::group_by(trip_number)%>%
+    dplyr::summarise(min_gap=min(gaps_min),
+              max_gap=max(gaps_min))%>%
+    dplyr::rename(trip_id=trip_number)
+
+  this_params<-gaps_params %>%
+    dplyr::left_join(duration_merged,by='trip_id')%>%
+    dplyr::select(trip_id,trip_start,trip_end,duration,min_gap,max_gap)
+
+  return(this_params)
+}
+devtools::document()
+devtools::check()
 ```
 
 ```{r}
-Trips_04params<-sula::calcular_duracion(GPS_data=Trips_03trips, 
-                        col_diahora='daytime',
-                        formato =  "%Y-%m-%d %H:%M:%S",
-                        unidades="hours",
-                        separador="trip_number")
+Trips_03trips<-GSM_trips
+Trips_04params<-calculate_params(my_locs=Trips_03trips,
+                                 my_daytime='daytime',
+                                 my_format=  "%Y-%m-%d %H:%M:%S",
+                                 my_units="hours",
+                                 my_separator="trip_number")
+head(Trips_04params)
 ```
 
 Define trip_month_id in case there are outliers and the locations need to be subset
 
 ```{r}
-Trips_04params<-Trips_04params %>%
+Trips_05params<-Trips_04params %>%
   mutate(trip_month_id=paste0(This_month_text,"_a_",trip_id))%>%
   mutate(central_loc='colony')
 ```
 
-### Step 7: gaps_params
-
-```{r}
-gaps_params<-function(my_params=my_params,my_locs=my_locs){
-  
-  gaps_params<-my_locs %>%
-    group_by(trip_number)%>%
-    summarise(min_gap=min(gaps_min),
-              max_gap=max(gaps_min))%>%
-    rename(trip_id=trip_number)
-
-    this_params<-gaps_params %>%
-      left_join(my_params,by='trip_id')%>%
-      select(trip_id,trip_month_id,central_loc,trip_start,trip_end,duration,min_gap,max_gap)
-  
-  return(this_params)
-}
-```
-
-```{r}
-Trips_05params<-gaps_params(my_params = Trips_04params, my_locs = Trips_03trips)
-head(Trips_05params)
-```
-
-
 # Short: straight forward using functions
+
+```{r}
+This_month<-'08'
+This_month_text<-'Ago'
+```
 
 ```{r}
 Trips_01locs<-GSM_locs %>%
@@ -410,7 +471,11 @@ Trips_02outside<-Trips_01locs %>%
 ```
 
 ```{r}
-trip_number_sequence<-continue_trip_sequence(my_previous=Trips_05params$trip_id)
+Previous_params<-data.frame(trip_id=c("trip_00405"))
+```
+
+```{r}
+trip_number_sequence<-continue_trip_sequence(my_previous=Previous_params$trip_id)
 ```
 
 ```{r}
@@ -427,11 +492,11 @@ plot_trips(my_locs=Trips_03trips,my_central_location=my_central_location)
 ```
 
 ```{r}
-Trips_04params<-sula::calcular_duracion(GPS_data=Trips_03trips, 
-                        col_diahora='daytime',
-                        formato =  "%Y-%m-%d %H:%M:%S",
-                        unidades="hours",
-                        separador="trip_number")
+Trips_04params<-calculate_params(my_locs=Trips_03trips,
+                                 my_daytime='daytime',
+                                 my_format=  "%Y-%m-%d %H:%M:%S",
+                                 my_units="hours",
+                                 my_separator="trip_number")
 ```
 
 ```{r}
@@ -443,30 +508,40 @@ hist(Trips_04params$duration)
 ```
 
 ```{r}
-Trips_04params<-Trips_04params %>%
+Trips_05params<-Trips_04params %>%
   mutate(trip_month_id=paste0(This_month_text,"_a_",trip_id))%>%
   mutate(central_loc='colony')
 ```
-
-```{r}
-Trips_05params<-gaps_params(my_params = Trips_04params, my_locs = Trips_03trips)
-head(Trips_05params)
-```
-
 
 ```{r}
 length(unique(Trips_05params$trip_id))
 length(unique(Trips_03trips$trip_number))
 ```
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Check criteria
 
-## params_class
+## Step 1: params_class
 
-```{r}
+
+```{r, eval=FALSE, echo=FALSE}
+GSM_params<-Trips_05params
+GSM_params<-GSM_params %>%
+  select(trip_id,trip_month_id,
+         central_loc,
+         trip_start,trip_end,
+         min_gap,max_gap,
+         duration)
+#Move to folder data
+save(GSM_params, file = "GSM_params.RData", version = 2)
+#Run in console, not Rmd
+usethis::use_r("GSM_params")
+devtools::document()
+devtools::check()
+```
+```{r, eval=FALSE, echo=FALSE}
+usethis::use_r("params_class")
 params_class<-function(my_params=my_params){
   my_params<-my_params %>%
     mutate(trip_size = case_when(duration >= 0.5 ~ 'trip_longer_than_30mins',
@@ -477,21 +552,64 @@ params_class<-function(my_params=my_params){
                                 max_gap <= 60 ~ 'ok_resolution_gaps_less_60_mins',
                                 TRUE ~ "other"))%>%
     
-    mutate(params_analyses=case_when(duration >= 24 ~ 'reevaluate_centralloc_longer_than_24h',
-                                     duration <= 24 ~ 'keep_centralloc_shorter_than_24h',
+    mutate(params_analyses=case_when(duration >= 24 ~ 'longer_than_24h_reevaluate_centralloc',
+                                     duration <= 24 ~ 'shorter_than_24h_keep_centralloc',
                                      TRUE ~ "other"))%>%
     
-    mutate(interpolation = case_when(duration <= 24 & max_gap <= 60 ~ 'interpolate_gapsless60mins_shorter24hr',
-                                     duration >= 24 & max_gap >= 60 ~ 'dont_interpolate_gapsmore60mins_longer24hr',
-                                     duration >= 24 ~ 'dont_interpolate_longer24hr',
-                                     max_gap >= 60 ~ 'dont_interpolate_gapsmore60mins_longer24hr',
+    mutate(interpolation = case_when(duration <= 24 & max_gap <= 60 ~ 'gapsless60mins_shorter24hr_canditate_interpolate',
+                                     duration >= 24 & max_gap >= 60 ~ 'gapsmore60mins_longer24hr_reevaluate_centralloc',
+                                     duration >= 24 ~ 'onger24hr_reevaluate_centralloc',
+                                     max_gap >= 60 ~ 'gapsmore60mins_dont_interpolate',
                                      TRUE ~ "other"))
   
   return(my_params)}
+#' Add trip classification on the trip parameters
+#'
+#' @param my_params a data frame with trip parameters
+#'
+#' @return returns four new columns with criteria to keep or recalculate trip parameters
+#' @export
+#'
+# @examples GSM_criteria<-params_class(my_params=GSM_params)
+classify_params<-function(my_params=my_params){
+  my_params<-my_params %>%
+    dplyr::mutate(trip_size =  dplyr::case_when(duration >= 0.5 ~ 'trip_longer_than_30mins',
+                                 duration <= 0.5 ~ 'trip_shorter_than_30mins',
+                                 TRUE ~ "other"))%>%
+
+    dplyr::mutate(resolution= dplyr::case_when(max_gap >= 60 ~ 'low_resolution_gaps_more_60_mins',
+                                max_gap <= 60 ~ 'ok_resolution_gaps_less_60_mins',
+                                TRUE ~ "other"))%>%
+
+    dplyr::mutate(params_analyses= dplyr::case_when(duration >= 24 ~ 'longer_than_24h_reevaluate_centralloc',
+                                     duration <= 24 ~ 'shorter_than_24h_keep_centralloc',
+                                     TRUE ~ "other"))%>%
+
+    dplyr::mutate(interpolation =  dplyr::case_when(duration <= 24 & max_gap <= 60 ~ 'gapsless60mins_shorter24hr_canditate_interpolate',
+                                     duration >= 24 & max_gap >= 60 ~ 'gapsmore60mins_longer24hr_reevaluate_centralloc',
+                                     duration >= 24 ~ 'onger24hr_reevaluate_centralloc',
+                                     max_gap >= 60 ~ 'gapsmore60mins_dont_interpolate',
+                                     TRUE ~ "other"))
+
+  return(my_params)}
+
+# Run in console
+devtools::document()
+devtools::check()
 ```
 
 ```{r}
-Params_00criteria<-params_class(my_params=Trips_05params)
+Params_00criteria<-classify_params(my_params=GSM_params)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+Params_criteria<-Params_00criteria
+#Move to folder data
+save(Params_criteria, file = "Params_criteria.RData", version = 2)
+#Run in console, not Rmd
+usethis::use_r("Params_criteria")
+devtools::document()
+devtools::check()
 ```
 
 ## check_trip_criteria
@@ -504,17 +622,40 @@ If trips had a gap of > 1hr and/or included overnight locations without a clear 
 check_trip_criteria<-function(my_params=my_params){
   
   trip_criteria<-my_params %>%
-    group_by(trip_size)%>%
-    tally()%>%
-    mutate(total=sum(n))%>%
-    mutate(prop=n*100/total)
+    dplyr::group_by(trip_size)%>%
+    dplyr::tally()%>%
+    dplyr::mutate(total=sum(n))%>%
+    dplyr::mutate(prop=n*100/total)
   
    print(paste0("From ",sum(trip_criteria$n),' trips: ',
                 round(trip_criteria$prop[1],2),' were ',trip_criteria$trip_size[1],' and ',
                  round(trip_criteria$prop[2],2),' were ',trip_criteria$trip_size[2],
-                '. Trips shorter than 30 minutes are not considered real trips. Remove trips shorter than 30 minutes'
+                '. Trips shorter than 30 minutes are not considered real trips. Remove these trips from analyses. '
                 ))
   
+}
+#' This function is just to provide a baseline information
+#'
+#' @param my_params a data frame with trip parameters
+#'
+#' @return prints information about your parameters
+#' @export
+#'
+# @examples check_trip_criteria(my_params=Params_criteria)
+check_trip_criteria<-function(my_params=my_params){
+
+  trip_criteria<-my_params %>%
+    dplyr::group_by(trip_size)%>%
+    dplyr::tally()%>%
+    dplyr::mutate(total=sum(n))%>%
+    dplyr::mutate(prop=n*100/total)
+
+  print(paste0("From ",sum(trip_criteria$n),' trips: ',
+               round(trip_criteria$prop[1],2),' were ',trip_criteria$trip_size[1],' and ',
+               round(trip_criteria$prop[2],2),' were ',trip_criteria$trip_size[2],
+               '. Trips shorter than 30 minutes are not considered real trips. Remove these trips from analyses. '
+  ))
+
 }
 ```
 
@@ -523,7 +664,7 @@ check_trip_criteria(my_params=Params_00criteria)
 ```
 ```{r}
 Params_01criteria<-Params_00criteria %>%
-  filter(trip_size == 'trip_longer_than_30mins')
+  dplyr::filter(trip_size == 'trip_longer_than_30mins')
 ```
 
 ## check_resolution_criteria
