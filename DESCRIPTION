@@ -11,7 +11,7 @@ Description: functions to manipulate data obtained from continuous recording tra
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.2
+RoxygenNote: 7.3.2
 LazyData: true
 URL: https://github.com/MiriamLL/larus
 BugReports: https://github.com/MiriamLL/larus/issues
