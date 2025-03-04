@@ -22,7 +22,7 @@ classify_params<-function(my_params=my_params){
 
     dplyr::mutate(interpolation =  dplyr::case_when(duration <= 24 & max_gap <= 60 ~ 'gapsless60mins_shorter24hr_canditate_interpolate',
                                      duration >= 24 & max_gap >= 60 ~ 'gapsmore60mins_longer24hr_reevaluate_centralloc',
-                                     duration >= 24 ~ 'onger24hr_reevaluate_centralloc',
+                                     duration >= 24 ~ 'longer24hr_reevaluate_centralloc',
                                      max_gap >= 60 ~ 'gapsmore60mins_dont_interpolate',
                                      TRUE ~ "other"))
 
