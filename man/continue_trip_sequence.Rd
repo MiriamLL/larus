@@ -16,7 +16,7 @@ the same data frame with an additional column called timedif_min
 A function to calculate gaps between locations inside trips
 }
 \examples{
-Previous_params<-as.data.frame(trip_id="trip_00405")
+Previous_params<-data.frame(trip_id=c("trip_00405"))
 trip_number_sequence<-continue_trip_sequence(my_previous=Previous_params$trip_id)
 
 }

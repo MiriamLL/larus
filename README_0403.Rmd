@@ -375,8 +375,8 @@ gaps_params<-function(my_params=my_params,my_locs=my_locs){
   
   gaps_params<-my_locs %>%
     group_by(trip_number)%>%
-    summarise(min_gap=min(gaps_time),
-              max_gap=max(gaps_time))%>%
+    summarise(min_gap=min(gaps_min),
+              max_gap=max(gaps_min))%>%
     rename(trip_id=trip_number)
 
     this_params<-gaps_params %>%
@@ -396,7 +396,7 @@ head(Trips_05params)
 # Short: straight forward using functions
 
 ```{r}
-Trips_01locs<-my_locs%>%
+Trips_01locs<-GSM_locs %>%
   filter(month==This_month)
 ```
 
@@ -627,7 +627,7 @@ Reevaluate_tripid
 ```{r}
 Reevaluate_01locs<-Trips_03trips %>%
   filter(trip_number %in% Reevaluate_tripid)%>%
-  relocate(ID,trip_number,daytime,dt,gaps_time)
+  relocate(ID,trip_number,daytime,gaps_min)
 head(Reevaluate_01locs)
 ```
 
@@ -804,16 +804,16 @@ Params_merged<-rbind(Params_02criteria %>% filter(!trip_id %in% Reevaluate_tripi
 Locs_merged <-rbind(Trips_03trips%>% 
                       filter(!trip_number %in% Reevaluate_tripid)%>%
                       select(ID,daytime,season,month,
-                             Longitude,Latitude,countday,
-                             Hour,Day_or_night,central_base,inside,num_seq,
-                             ID.y,dt,Location_gaps,Battery,Gaps_time,battery.charge.percent,
+                             Longitude,Latitude,
+                             central_base,inside,num_seq,
+                             gaps_min,battery_charge,
                              trip_number),
                     
                     Reevaluate_04trips %>%
                       select(ID,daytime,season,month,
-                             Longitude,Latitude,countday,
-                             Hour,Day_or_night,central_base,inside,num_seq,
-                             ID.y,dt,Location_gaps,Battery,Gaps_time,battery.charge.percent,
+                             Longitude,Latitude,
+                             central_base,inside,num_seq,
+                             gaps_min,battery_charge,
                              trip_number))
 ```
 
@@ -915,59 +915,53 @@ plot_trips(my_locs=Inter_03locs,my_central_location = my_central_location)+
   facet_wrap(~trip_number)
 ```
 
+```{r}
+Inter_03locs %>% group_by(trip_number)%>%tally()%>%summarise(last=tail(trip_number))
+```
+
 
 Last 6 trips look genuinely that the bird change location
 
-# X
-# X
-# X
-
-# Reevaluate
-
 ```{r}
-reevaluate_locs<-function(this_tripid,
-                     this_locs,
-                     this_central_location){
-  
-## Step 2: extract locs
-Reevaluate_00tripid<-this_tripid
-Reevaluate_00tripid
-
-## Step 3.Subset locations
-Reevaluate_01locs<-this_locs %>%
-  filter(trip_number %in% Reevaluate_00tripid)%>%
-  relocate(ID,trip_number,daytime,dt,gaps_time)
-
-new_central_location<-this_central_location
-
-plot_check(my_locs=Reevaluate_01locs,my_central_location = this_central_location)+
-  geom_point(data=new_central_location, aes(x=Longitude, y=Latitude),color='blue',shape=17, size=5)
-
-return(Reevaluate_01locs)}
+this_trip<-'trip_00679'
 ```
 
 ```{r}
-revaluate_params<-function(this_tripid,
-                     this_locs,
+Inter_05reevaluate<-Inter_03locs %>%
+  filter(trip_number==this_trip)
+```
+
+#### new central location
+
+```{r}
+new_central_location<-data.frame(Longitude=-110.325,Latitude=24.15)
+plot_check(my_locs=Inter_05reevaluate,my_central_location = new_central_location)+
+  geom_point(data=new_central_location, aes(x=Longitude, y=Latitude),color='red',shape=17, size=5)
+```
+
+# reevaluate_params
+
+```{r}
+reevaluate_params<-function(this_locs,
                      this_central_location,
                      this_previous){
   
-## Step 5: create_buffer
+## create_buffer
 new_central_buffer<-create_buffer(central_point=new_central_location,buffer_km=0.3)
 
-## Step 6: from_df_to_sf
+## from_df_to_sf
 Reevaluate_02sf<-from_df_to_st(Reevaluate_01locs)
 
-## Step 7: over
+## over
 Reevaluate_03over<- over(my_locations=Reevaluate_02sf,my_buffer=new_central_buffer)
 
-## Step 8: add_trip_number
+## add_trip_number
 new_trip_number_sequence<-continue_trip_sequence(my_previous=this_previous$trip_id)
 
 Reevaluate_04trips<-add_trip_number(my_df=Reevaluate_01locs,
                                      my_over=Reevaluate_03over,
                                      my_trip_number_sequence=new_trip_number_sequence)
-## Step 9: calculate params
+## calculate params
 Reevaluate_05params<-sula::calcular_duracion(GPS_data=Reevaluate_04trips, 
                         col_diahora='daytime',
                         formato =  "%Y-%m-%d %H:%M:%S",
@@ -985,20 +979,18 @@ Reevaluate_06params
 return(Reevaluate_06params)}
 ```
 
-### checks
-
 ```{r}
-hist(Reevaluate$duration)
-```
-
-```{r}
-hist(Reevaluate_06params$duration)
+Inter_06params<-reevaluate_params(this_locs=Inter_05reevaluate,
+                     this_central_location=new_central_location,
+                     this_previous=data.frame(trip_id=c('trip_00679'))
+)
+Inter_06params
 ```
 
 ## plot_trips
 
 ```{r}
-plot_trips(my_locs=Reevaluate_04trips,my_central_location = my_central_location)+
+plot_trips(my_locs=Inter_05reevaluate,my_central_location = new_central_location)+
   geom_point(data=new_central_location, aes(x=Longitude, y=Latitude),color='blue',shape=17, size=5)
 ```
 
