@@ -111,10 +111,6 @@ When studying tracking locations from GSM data, especially in the case of birds 
 
 Calculate gaps
 
-```{r}
-library(larus)
-```
-
 if there is only one individual
 
 ```{r}
@@ -410,7 +406,7 @@ Trips_03trips<-Trips_02outside %>%
 
 function: plot_trips
 
-```{r}
+```{r, echo=FALSE, eval=FALSE}
 plot_trips<-function(my_locs=my_locs,my_central_location=my_central_location){
   ggplot2::ggplot()+
   ggplot2::geom_point(data = my_locs, ggplot2::aes(x=Longitude, y = Latitude,color=trip_number),
@@ -537,11 +533,12 @@ devtools::check()
 ```
 
 ```{r}
-Trips_04params<-calculate_params(my_locs=Trips_03trips,
+Trips_04params<-calculate_params(my_locs=GSM_trips,
                                  my_daytime='daytime',
-                                 my_format=  "%Y-%m-%d %H:%M:%S",
+                                 my_format="%Y-%m-%d %H:%M:%S",
                                  my_units="hours",
-                                 my_separator="trip_number")
+                                 my_divider="trip_number",
+                                 my_gaps='gaps_min')
 head(Trips_04params)
 ```
 
@@ -1113,12 +1110,6 @@ over<-function(my_locations=my_locations,my_polygon=my_polygon){
 Check nrows should correspond.
 
 ```{r}
-Reevaluate_locs<-Reevaluate_locs
-Reevaluate_sf<-Reevaluate_sf
-Reevaluate_polygon<-Reevaluate_polygon
-```
-
-```{r}
 Reevaluate_locs$central_location<- larus::over(my_locations=Reevaluate_sf,
                                                my_polygon=Reevaluate_polygon)
 ```
@@ -1136,7 +1127,7 @@ devtools::check()
 ```
 
 ```{r}
-Previous_params<-Trips_05params$trip_id
+Previous_params<-GSM_params$trip_id
 ```
 
 ```{r}
@@ -1226,7 +1217,9 @@ Reevaluate_05params<-calculate_params(my_locs=Reevaluate_04trips,
                                  my_daytime='daytime',
                                  my_format=  "%Y-%m-%d %H:%M:%S",
                                  my_units="hours",
-                                 my_separator="trip_number")
+                                 my_divider="trip_number",
+                                 my_gaps='gaps_min'
+                                 )
 head(Reevaluate_05params)
 ```
 
@@ -1305,10 +1298,6 @@ Locs_merged <-rbind(GSM_trips %>%
 
 # 6. Lenght path
 
-```{r}
-
-```
-
 ## calculate_distances
 
 ```{r,eval=FALSE, echo=FALSE}
@@ -1326,7 +1315,7 @@ calculate_distances<-function(my_data=my_data){
 
 ## distance parameters
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 trips_df$separator <- (trips_df[['trip_number']])
 trips_list <- split(trips_df, trips_df$separator)
         for (i in seq_along(trips_list)) {
@@ -1347,7 +1336,7 @@ Path_02locs <- do.call("rbind", trips_list)
 
 ## calculate leaving and returning distance
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 calculate_leaving_distance<-function(my_locs=my_locs,my_central_location=my_central_location){
   
   # trips
@@ -1461,7 +1450,7 @@ Inter_02locs %>%
 
 ## Step 3: check locations
 
-The part of dont interpolate would be large because it includes resting and overnight locations
+The part of don't interpolate would be large because it includes resting and overnight locations
 
 ```{r}
 Inter_02locs %>%
@@ -1500,8 +1489,6 @@ Inter_04excluded <- Inter_02locs %>%
 plot_trips(my_locs=Inter_04excluded,my_central_location = my_central_location)+
   ggplot2::facet_wrap(~trip_number)
 ```
-
-
 
 Trip 445
 Trip 508 

@@ -9,7 +9,8 @@ calculate_params(
   my_daytime = my_daytime,
   my_format = my_format,
   my_units = my_units,
-  my_separator = my_separator
+  my_divider = my_divider,
+  my_gaps = my_gaps
 )
 }
 \arguments{
@@ -21,7 +22,9 @@ calculate_params(
 
 \item{my_units}{pick "hours", "minutes", "seconds".}
 
-\item{my_separator}{a column to separate trips, for example 'trip_number'}
+\item{my_divider}{a column to separate trips, for example 'trip_number'}
+
+\item{my_gaps}{a column to separate trips, for example 'gaps_min'}
 }
 \value{
 regresa un nuevo data frame con la información del viaje, cuando inicio, cuando termino y la duración
