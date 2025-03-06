@@ -1397,7 +1397,17 @@ Locs_merged <-rbind(GSM_trips %>%
 
 # 6. Lenght path
 
+```{r}
+library(larus)
+```
+
+```{r}
+GSM_trips<-GSM_trips
+```
+
 ## calculate_distances
+
+This function has no divider, it can be used by individuals trips
 
 ```{r,eval=FALSE, echo=FALSE}
 calculate_distances<-function(my_data=my_data){
@@ -1410,13 +1420,44 @@ calculate_distances<-function(my_data=my_data){
   my_data$dist_km<-my_distances/1000
   return(my_data)
 }
+calculate_distances(my_data=GSM_trips)
 ```
 
-## distance parameters
+
+Remove small trips
+
+```{r, eval=FALSE}
+my_trips<-GSM_trips
+short_trips<-my_trips %>%
+  dplyr::group_by(trip_number)%>%
+  dplyr::tally()%>%
+  dplyr::arrange(-n)%>%
+  dplyr::filter(n<3)
+Path_trips<-GSM_trips %>%
+  dplyr::filter(!trip_number %in% unique(short_trips$trip_number))
+```
+
+```{r, eval=FALSE, echo=FALSE}
+#Move to folder data
+save(Path_trips, file = "Path_trips.RData", version = 2)
+#Run in console, not Rmd
+usethis::use_r("Path_trips")
+devtools::document()
+devtools::check()
+```
+
+## distances_per_trip
+This function is a loop that separated per divider
 
 ```{r,eval=FALSE, echo=FALSE}
-trips_df$separator <- (trips_df[['trip_number']])
-trips_list <- split(trips_df, trips_df$separator)
+usethis::use_r("distances_per_trip")
+
+distances_per_trip<-function(my_df=my_df,
+                             my_divider=my_divider){
+  trips_df<-my_df
+  trips_df$separator <- (trips_df[['trip_number']])
+  
+  trips_list <- split(trips_df, trips_df$separator)
         for (i in seq_along(trips_list)) {
         trips_df <- trips_list[[i]]
         trips_coords <- trips_df[, c("Longitude", "Latitude")]
@@ -1430,21 +1471,39 @@ trips_list <- split(trips_df, trips_df$separator)
         trips_df$pointsdist_km <- round(trips_distancias/1000,2)
         trips_list[[i]] <- trips_df
         }
-Path_02locs <- do.call("rbind", trips_list)
+my_path <- do.call("rbind", trips_list)
+return(my_path)
+}
+```
+
+Be careful, to calculate path distances you must have at least three locations per trip
+Takes time
+
+```{r,eval=FALSE}
+Path_distances<-distances_per_trip(my_df=Path_trips,
+                                   my_divider='trip_number')
+```
+
+```{r,eval=FALSE}
+Path_distances %>% 
+  dplyr::group_by(trip_number)%>%
+  dplyr::summarise(path_lenght_km=sum(pointsdist_km,na.rm=TRUE))%>%
+  dplyr::mutate(trip_id=trip_number)
 ```
 
 ## calculate leaving and returning distance
 
 ```{r,eval=FALSE, echo=FALSE}
-calculate_leaving_distance<-function(my_locs=my_locs,my_central_location=my_central_location){
+usethis::use_r("calculate_leaving_returning")
+calculate_leaving_returning<-function(my_locs=my_locs,my_central_location=my_central_location){
   
   # trips
   my_paths<-my_locs %>%
     dplyr::group_by(trip_number)%>%
-    dplyr::summarise(first_lat=first(Latitude),
-                     first_lon=first(Longitude),
-                     last_lat=last(Latitude),
-                     last_lon=last(Longitude),
+    dplyr::summarise(first_lat= dplyr::first(Latitude),
+                     first_lon= dplyr::first(Longitude),
+                     last_lat= dplyr::last(Latitude),
+                     last_lon= dplyr::last(Longitude),
                      central_location='colony',
                      central_lat=my_central_location$Latitude,
                      central_lon=my_central_location$Longitude)
@@ -1480,8 +1539,71 @@ calculate_leaving_distance<-function(my_locs=my_locs,my_central_location=my_cent
   
   return(my_paths)
 }
+#' A function to calculate the distance from leaving and returning to the colony
+#'
+#' @param my_locs a data frame with Longitude, Latitude,and trip_number
+#' @param my_central_location a data frame with Longitude and Latitude
+#'
+#' @return
+#' @export returns a data frame with the trip number, the distance of leaving and returning, and the coordinates of the central location
+#'
+#' @examples calculate_leaving_returning(my_locs=Path_trips,my_central_location=data.frame(Longitude=-110.33,Latitude=24.287))
+calculate_leaving_returning<-function(my_locs=my_locs,my_central_location=my_central_location){
+
+  # trips
+  my_paths<-my_locs %>%
+    dplyr::group_by(trip_number)%>%
+    dplyr::summarise(first_lat= dplyr::first(Latitude),
+                     first_lon= dplyr::first(Longitude),
+                     last_lat= dplyr::last(Latitude),
+                     last_lon= dplyr::last(Longitude),
+                     central_location='colony',
+                     central_lat=my_central_location$Latitude,
+                     central_lon=my_central_location$Longitude)
+
+  # to spatial points data frame
+  central_location_df <- my_paths[, c("central_lon","central_lat")]
+  central_location_sp <- sp::SpatialPointsDataFrame(coords = central_location_df,data = central_location_df)
+  sp::proj4string(central_location_sp) = sp::CRS("+init=epsg:4326")
+
+  # leaving the central location
+  leaving_df <- my_paths[, c("first_lon", "first_lat")]
+  leaving_sp <- sp::SpatialPointsDataFrame(coords = leaving_df,data = leaving_df)
+  sp::proj4string(leaving_sp) = sp::CRS("+init=epsg:4326")
+
+  # leaving distance
+  leaving_distance<-geosphere::distm(leaving_sp, central_location_sp,fun = geosphere::distHaversine)
+  leaving_distance_km<-round(as.numeric(leaving_distance[,1])/1000,digits = 2)
+
+  # add to trip list
+  my_paths$leaving_distance_km<-leaving_distance_km
+
+  # returning to the central location
+  returning_df <- my_paths[, c("last_lon", "last_lat")]
+  returning_sp <- sp::SpatialPointsDataFrame(coords = returning_df,data = returning_df)
+  sp::proj4string(returning_sp) = sp::CRS("+init=epsg:4326")
+
+  # leaving distance
+  returning_distance<-geosphere::distm(returning_sp, central_location_sp,fun = geosphere::distHaversine)
+  returning_distance_km<-round(as.numeric(returning_distance[,1])/1000,digits = 2)
+
+  # add to trip list
+  my_paths$returning_distance_km<-returning_distance_km
+
+  return(my_paths)
+}
 ```
 
+```{r}
+library(larus)
+```
+
+```{r}
+Path_leaving_returning<-calculate_leaving_returning(my_locs=Path_trips,
+                                                    my_central_location=data.frame(Longitude=-110.33,Latitude=24.287))
+```
+
+Careful: exclude those trips that the central_location was south of the colony for the corrections.
 
 # --------------------
 
@@ -1547,7 +1669,7 @@ Inter_02locs %>%
   dplyr::tally()
 ```
 
-## Step 3: check locations
+## Step 2: check locations
 
 The part of don't interpolate would be large because it includes resting and overnight locations
 
@@ -1565,7 +1687,7 @@ my_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.287288
 plot_trips(my_locs=Inter_02locs,my_central_location = my_central_location)
 ```
 
-## Step 4: check included
+## Step 3: check included
 
 ```{r}
 Inter_03included <- Inter_02locs %>%
@@ -1576,7 +1698,7 @@ Inter_03included <- Inter_02locs %>%
 plot_trips(my_locs=Inter_03included,my_central_location = my_central_location)
 ```
 
-## Step 5: check excluded
+## Step 4: check excluded
 
 ```{r}
 Inter_04excluded <- Inter_02locs %>%
@@ -1615,7 +1737,7 @@ dplyr::first(Inter_05reevaluate$daytime)
 dplyr::last(Inter_05reevaluate$daytime)
 ```
 
-## Step 6: new central location
+## Step 5: new central location
 
 ```{r}
 plot_check<-function(my_locs=my_locs,my_central_location=my_central_location){
@@ -1635,7 +1757,7 @@ plot_check(my_locs=Inter_05reevaluate,my_central_location = new_central_location
   ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='red',shape=17, size=5)
 ```
 
-## Step 7: reevaluate_params
+## Step 6: reevaluate_params
 
 ```{r}
 Inter_05reevaluate
@@ -1679,18 +1801,18 @@ my_params<-calculate_params(my_locs=my_trips,
 return(my_params)}
 ```
 
-```{r}
+```{r,eval=FALSE}
 Inter_06params<-recalculate_params(this_locs=Inter_05reevaluate,
                                    this_central_location=new_central_location,
                                    this_previous=Inter_params)
 Inter_06params
 ```
 
-```{r}
+```{r,eval=FALSE}
 This_month_text<-"Ago"
 ```
 
-```{r}
+```{,eval=FALSEr}
 Inter_06params<-Inter_06params%>%
   dplyr::mutate(trip_month_id=paste0(This_month_text,"_c_",trip_id))%>%
   dplyr::mutate(central_loc='south_of_colony')
@@ -1713,13 +1835,10 @@ devtools::document()
 devtools::check()
 ```
 
-```{r}
+```{r, eval=FALSE,echo=FALSE}
 usethis::use_package("geosphere")
 usethis::use_package("stringr")
 usethis::use_package("tidyr")
-```
-
-```{r, eval=FALSE,echo=FALSE}
 interpolate_trips<-function(my_df=my_df,
                             interval=interval,
                             column_datetime=column_datetime,
@@ -1880,39 +1999,6 @@ compare_notrips(my_params=Trips_05params,my_locs=Trips_03trips)
 GSM_params %>%
   filter(duration>24)%>%
   arrange(-duration)
-```
-
-```{r}
-LALI05_06jun_reevaluate_01trips<-subset_reevaluation(my_trip=LALI05_06jun_03trips,   
-                                                     my_tripid='trip_00231',
-                                                     my_central_location=rest_central_location)
-```
-
-```{r}
-LALI05_06jun_reevaluate_02trips<-identify_trips_reevaluation(my_trip=LALI05_06jun_reevaluate_01trips,
-                                                            my_central_location=rest_central_location,
-                                                            my_previous_params=LALI05_06jun_04params$trip_id)
-```
-
-```{r}
-plot_trips(my_locs=LALI05_06jun_reeavluate_02trips,my_central_location=rest_central_location)+
-  theme(legend.position='right')
-```
-
-```{r}
-LALI05_06jun_reeavaluate_05params<-calculate_params(my_locs=LALI05_06jun_reevaluate_02trips,
-                                 my_daytime='daytime',
-                                 my_format=  "%Y-%m-%d %H:%M:%S",
-                                 my_units="hours",
-                                 my_divider="trip_number",
-                                 my_gaps="gaps_min")
-head(LALI05_06jun_reeavaluate_05params)
-```
-
-```{r}
-LALI05_06jun_reevaluateC_05params<-LALI05_06jun_reeavaluate_05params %>%
-  dplyr::mutate(trip_month_id=paste0(This_month_text,"_c_",trip_id))%>%
-  dplyr::mutate(central_loc='south_of_colony')
 ```
 
 
