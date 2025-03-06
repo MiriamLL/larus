@@ -1877,70 +1877,45 @@ compare_notrips(my_params=Trips_05params,my_locs=Trips_03trips)
 # 2. Reevaluate
 
 ```{r}
-Trips_05params %>%
+GSM_params %>%
   filter(duration>24)%>%
   arrange(-duration)
 ```
 
-
 ```{r}
-subset_reevaluation<-function(my_tripid=my_tripid,
-                              my_trip=my_trip,
-                              my_central_location=my_central_location){
-  
-  # Subset locations
-  my_locs<-my_trip %>%
-    dplyr::filter(trip_number %in% my_tripid)%>%
-    dplyr::relocate(ID,trip_number,daytime,gaps_min)
-  
-  print(plot_check(my_locs=my_locs,my_central_location = nest_central_location)+
-    ggplot2::geom_point(data=my_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='orange',shape=17, size=5)+
-    ggplot2::ggtitle('my new central location in orange'))
-  
-  return(my_locs)
-}
-```
-
-Previous central location
-```{r}
-nest_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
-```
-
-New_central location
-```{r}
-new_central_location<-data.frame(Longitude=-110.3269,Latitude=24.152)
+LALI05_06jun_reevaluate_01trips<-subset_reevaluation(my_trip=LALI05_06jun_03trips,   
+                                                     my_tripid='trip_00231',
+                                                     my_central_location=rest_central_location)
 ```
 
 ```{r}
-Reevaluation_01locs<-
-  subset_reevaluation(my_trip=GSM_trips,
-                      my_tripid='trip_00528',
-                      my_central_location=new_central_location)
+LALI05_06jun_reevaluate_02trips<-identify_trips_reevaluation(my_trip=LALI05_06jun_reevaluate_01trips,
+                                                            my_central_location=rest_central_location,
+                                                            my_previous_params=LALI05_06jun_04params$trip_id)
 ```
 
 ```{r}
-identify_trips_reevaluation<-function(my_trip=my_trip,my_central_location=my_central_location,my_previous_params=my_previous_params){
-  
-  new_central_buffer<-create_buffer(central_point=my_central_location,buffer_km=0.3)
-  my_sf<-from_df_to_st(my_trip)
-  my_trip$central_location<- larus::over(my_locations=my_sf,my_polygon=new_central_buffer)
-  
-  new_trip_number_sequence<-continue_trip_sequence(my_previous=my_previous_params)
-  new_trips<-add_trip_number(my_df=my_trip,my_trip_number_sequence=new_trip_number_sequence)
-  
-  print(paste0("From ",length(unique(my_trip$trip_number)),
-               " original trip, the change in central location divided the locations to obtain ", 
-               length(unique(new_trips$trip_number)),
-               ' new trips'))
-  
-  return(new_trips)
-}
+plot_trips(my_locs=LALI05_06jun_reeavluate_02trips,my_central_location=rest_central_location)+
+  theme(legend.position='right')
 ```
 
 ```{r}
-LALI05_06jun_reevaluate_02trips<-identify_trips_reevaluation(my_trip=Reevaluate_trips,
-                                                             my_central_location=new_central_location,
-                                                             my_previous_params=Params_criteria$trip_id)
+LALI05_06jun_reeavaluate_05params<-calculate_params(my_locs=LALI05_06jun_reevaluate_02trips,
+                                 my_daytime='daytime',
+                                 my_format=  "%Y-%m-%d %H:%M:%S",
+                                 my_units="hours",
+                                 my_divider="trip_number",
+                                 my_gaps="gaps_min")
+head(LALI05_06jun_reeavaluate_05params)
 ```
+
+```{r}
+LALI05_06jun_reevaluateC_05params<-LALI05_06jun_reeavaluate_05params %>%
+  dplyr::mutate(trip_month_id=paste0(This_month_text,"_c_",trip_id))%>%
+  dplyr::mutate(central_loc='south_of_colony')
+```
+
+
+
 
 # end of document

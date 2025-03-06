@@ -18,6 +18,6 @@ compare_notrips<-function(my_params=my_params,my_locs=my_locs){
     dplyr::filter(is.na(origin.y))
   print(paste0('There are ',length(unique(my_locs$trip_number)),' trips in locations, and ',
                length(unique(my_params$trip_id)),' in parameters'))
-  print(paste0('There are ',nrow(missingvalues1),' trips in locations, and ',
-               nrow(missingvalues1),' in parameters'))
+  print(paste0('There are ',nrow(missingvalues1),' trips missing in locations, and ',
+               nrow(missingvalues2),' in parameters'))
 }
