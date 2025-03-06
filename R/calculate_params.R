@@ -46,7 +46,11 @@ calculate_params<-function(my_locs=my_locs,
                                                   my_format), "GMT")
   duration_merged$duration <- as.numeric(difftime(duration_merged$trip_end,
                                                   duration_merged$trip_start, units = my_units))
-
+  if (!is.null(my_locs[[gaps_min]])) {
+  }
+  else {
+    warning("Please check the name on the column with the gaps calculations")
+  }
   gaps_params<-my_locs %>%
     dplyr::group_by(trip_number)%>%
     dplyr::summarise(min_gap=min(gaps_min),

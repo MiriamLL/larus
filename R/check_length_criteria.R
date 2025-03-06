@@ -17,8 +17,8 @@ check_length_criteria<-function(my_params=my_params){
 
 
   print(paste0("From ",sum(length_criteria$n),' trips: ',
-               round(length_criteria$prop[1],2),' (n = ',length_criteria$n[1],') were ',length_criteria$params_analyses[1],' and ',
-               round(length_criteria$prop[2],2),' (n = ',length_criteria$n[2],') were ',length_criteria$params_analyses[2],
+               round(length_criteria$prop[1],2),'% (n = ',length_criteria$n[1],') were ',length_criteria$params_analyses[1],' and ',
+               round(length_criteria$prop[2],2),'% (n = ',length_criteria$n[2],') were ',length_criteria$params_analyses[2],
                '. Evaluate if trips longer than 24 hrs is because of a change in central location'))
 
 }

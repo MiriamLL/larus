@@ -63,7 +63,6 @@ library(larus)
 head(GSM_battery)
 ```
 
-
 ```{r, message=FALSE}
 library(scales)
 library(ggplot2)
@@ -88,7 +87,7 @@ library(tidyverse)
 ```
 
 ```{r}
-GSM_battery <- GSM_battery%>%
+GSM_battery_class <- GSM_battery%>%
   mutate(battery_class = 
          case_when(is.na(battery_charge) ~ 'U',
                    battery_charge >= 75 ~ '1Optimal (>75%)',
@@ -99,12 +98,11 @@ GSM_battery <- GSM_battery%>%
 ```
 
 ```{r}
-Battery_classes <-GSM_battery %>%
+GSM_battery_class %>%
   group_by(battery_class)%>%
   tally()%>%
   mutate(total=sum(n))%>%
   mutate(prop=n*100/total)
-Battery_classes
 ```
 
 ## Gaps and battery relations
@@ -128,6 +126,7 @@ head(GSM_locs)
 ```
 
 ```{r, echo=FALSE, eval=FALSE}
+# already in functions
 calculate_gaps<-function(my_locs=my_locs,
                          my_datetime=my_datetime,
                          my_separator=my_separator){
@@ -163,7 +162,7 @@ calculate_gaps<-function(my_locs=my_locs,
 If there are more individuals
 
 ```{r}
-GSM_battery<-calculate_gaps(my_locs = GSM_locs,my_datetime = 'daytime',my_separator = 'ID')
+GSM_gaps <-calculate_gaps(my_locs = GSM_locs,my_datetime = 'daytime',my_separator = 'ID')
 ```
 
 Considerations:
@@ -174,7 +173,7 @@ Poor < 2 hours (120 minutes)
 Low  > 24 hours (1400 minutes)
 
 ```{r}
-Battery_gaps <- GSM_battery %>%
+GSM_gaps_class <- GSM_gaps %>%
   mutate(gaps_class = 
            case_when(is.na(gaps_min) ~ '8U',
                      gaps_min <= 5 ~ '1Optimal (<5mins)',
@@ -187,7 +186,7 @@ Battery_gaps <- GSM_battery %>%
 ```
 
 ```{r}
-Battery_gaps %>%
+GSM_gaps_class %>%
   group_by(gaps_class)%>%
   tally()
 ```
@@ -201,7 +200,7 @@ library(patchwork)
 ### Battery and gaps per season
 
 ```{r, fig.height=4, fig.width=6}
-Battery_gaps%>%
+GSM_battery_class %>%
   group_by(season,battery_class)%>%
   tally()%>%
   mutate(total=sum(n))%>%
@@ -213,7 +212,7 @@ ggplot(aes(fill=battery_class, y=prop, x=season)) +
   theme_classic()+
   scale_y_continuous(expand = c(0,0)) +
   
-Battery_gaps %>%
+GSM_gaps_class  %>%
   group_by(season,gaps_class)%>%
   tally()%>%
   mutate(total=sum(n))%>%
@@ -232,7 +231,7 @@ plot_layout(ncol = 1)
 ### Battery and gaps per month
 
 ```{r, fig.height=4}
-Battery_gaps%>%
+GSM_battery_class %>%
   group_by(month,battery_class)%>%
   tally()%>%
   mutate(total=sum(n))%>%
@@ -244,7 +243,7 @@ ggplot(aes(fill=battery_class, y=prop, x=month)) +
   theme_classic()+
   scale_y_continuous(expand = c(0,0)) +
   
-Battery_gaps %>%
+GSM_gaps_class %>%
   group_by(month,gaps_class)%>%
   tally()%>%
   mutate(total=sum(n))%>%
@@ -391,7 +390,7 @@ devtools::check()
 ```
 
 ```{r}
-Previous_params<-data.frame(trip_id=c("trip_00405"))
+Previous_params<-data.frame(trip_id=c("trip_00001"))
 ```
 
 ```{r}
@@ -552,6 +551,53 @@ Define trip_month_id in case there are outliers and the locations need to be sub
 Trips_05params<-Trips_04params %>%
   mutate(trip_month_id=paste0(This_month_text,"_a_",trip_id))%>%
   mutate(central_loc='colony')
+```
+
+### Step 7: compare_notrips
+
+```{r}
+usethis::use_r("compare_notrips")
+compare_notrips<-function(my_params=my_params,my_locs=my_locs){
+
+  values1<-data.frame(id=unique(my_locs$trip_number),origin='values1')
+  values2<-data.frame(id=unique(my_params$trip_id),origin='values2')
+  valuescomparison<-merge(values1,values2,by='id',all=TRUE)
+  missingvalues1<-valuescomparison %>% 
+    filter(is.na(origin.x))
+  missingvalues2<-valuescomparison %>% 
+    filter(is.na(origin.y))
+print(paste0('There are ',length(unique(my_locs$trip_number)),' trips in locations, and ',
+             length(unique(my_params$trip_id)),' in parameters'))
+print(paste0('There are ',nrow(missingvalues1),' trips in locations, and ',
+             nrow(missingvalues1),' in parameters'))
+}
+#' Compare number of trips from parameters and locations
+#'
+#' @param my_params the data frame with the parameters - must have trip number
+#' @param my_locs the data frame with the locations - must have trip id
+#'
+#' @return information of which trips might be missing
+#' @export
+#'
+#' @examples compare_notrips(my_params=GSM_params,my_locs=GSM_trips)
+compare_notrips<-function(my_params=my_params,my_locs=my_locs){
+
+  values1<-data.frame(id=unique(my_locs$trip_number),origin='values1')
+  values2<-data.frame(id=unique(my_params$trip_id),origin='values2')
+  valuescomparison<-merge(values1,values2,by='id',all=TRUE)
+  missingvalues1<-valuescomparison %>%
+    dplyr::filter(is.na(origin.x))
+  missingvalues2<-valuescomparison %>%
+    dplyr::filter(is.na(origin.y))
+  print(paste0('There are ',length(unique(my_locs$trip_number)),' trips in locations, and ',
+               length(unique(my_params$trip_id)),' in parameters'))
+  print(paste0('There are ',nrow(missingvalues1),' trips in locations, and ',
+               nrow(missingvalues1),' in parameters'))
+}
+```
+
+```{r}
+compare_notrips(my_params=GSM_params,my_locs=GSM_trips)
 ```
 
 # --------------------
@@ -839,7 +885,7 @@ devtools::check()
 ```
 
 ```{r}
-Inter_02locs<-classify_locs(Inter_params=Interpolation_params,
+Locs_01class<-classify_locs(Inter_params=Interpolation_params,
                             Inter_locs=GSM_trips)
 ```
 
@@ -896,23 +942,10 @@ head(Reevaluate_01locs)
 my_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
 ```
 
-```{r}
-plot_check<-function(my_locs=my_locs,my_central_location=my_central_location){
-  ggplot2::ggplot()+
-  ggplot2::geom_point(data = my_locs, ggplot2::aes(x=Longitude, y = Latitude),
-             color='black',size = 0.8,alpha=0.4)+
-  ggplot2::geom_point(data=my_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='red',shape=17, size=5)+
-  ggplot2::geom_density_2d_filled(data = my_locs, ggplot2::aes(x = Longitude, y = Latitude),alpha = 0.5)+
-  ggplot2::theme_bw()+
-  ggplot2::theme(legend.position = 'none')+
-  ggplot2::ggtitle('Check that the triangle is close to the highest location concentration- \nThis should be your central location-  \nIf the central location is shifted -  \nPlease recalculate using another central location')}
-```
-
 ```{r, fig.height=4}
 plot_check(my_locs=Reevaluate_01locs,my_central_location = my_central_location)+
   ggplot2::facet_wrap(~trip_number)
 ```
-
 
 ```{r}
 new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
@@ -920,7 +953,7 @@ new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
 
 ```{r, fig.height=4}
 plot_check(my_locs=Reevaluate_01locs,my_central_location = my_central_location)+
-  ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='blue',shape=17, size=5)
+  ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='orange',shape=17, size=5)
 ```
 
 ## Step 5: create_buffer
@@ -1086,7 +1119,8 @@ Reevaluate_polygon<-Reevaluate_polygon
 ```
 
 ```{r}
-Reevaluate_locs$central_location<- over(my_locations=Reevaluate_sf,my_polygon=Reevaluate_polygon)
+Reevaluate_locs$central_location<- larus::over(my_locations=Reevaluate_sf,
+                                               my_polygon=Reevaluate_polygon)
 ```
 
 ## Step 8: add_trip_number
@@ -1102,15 +1136,11 @@ devtools::check()
 ```
 
 ```{r}
-Reevaluate_trips<-Reevaluate_trips
+Previous_params<-Trips_05params$trip_id
 ```
 
 ```{r}
-Previous_params<-data.frame(trip_id=c("trip_00405"))
-```
-
-```{r}
-new_trip_number_sequence<-continue_trip_sequence(my_previous=data.frame(trip_id=c("trip_00405")))
+new_trip_number_sequence<-continue_trip_sequence(my_previous=Previous_params)
 ```
 
 ```{r, eval=FALSE, echo=FALSE}
@@ -1171,6 +1201,7 @@ add_trip_number<-function(my_df,my_trip_number_sequence){
   return(my_trips)
 }
 ```
+
 ```{r}
 Reevaluate_04trips<-add_trip_number(my_df=Reevaluate_trips,
                                     my_trip_number_sequence=new_trip_number_sequence)
@@ -1178,6 +1209,10 @@ Reevaluate_04trips<-add_trip_number(my_df=Reevaluate_trips,
 
 ```{r}
 new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
+```
+
+```{r}
+Reevaluate_04trips<-Reevaluate_trips
 ```
 
 ```{r}
@@ -1270,9 +1305,13 @@ Locs_merged <-rbind(GSM_trips %>%
 
 # 6. Lenght path
 
+```{r}
+
+```
+
 ## calculate_distances
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 calculate_distances<-function(my_data=my_data){
   my_coords<- my_data[,c('Longitude','Latitude')]
   my_spatial <- sp::SpatialPointsDataFrame(coords = my_coords, data = my_data)
@@ -1361,10 +1400,10 @@ calculate_leaving_distance<-function(my_locs=my_locs,my_central_location=my_cent
 # 7. Maximum distances
 
 ```{r}
-Maxdist_01params<-calcular_maxdist(GPS_data = Locs_05path, 
-                             nest_loc = nest_central_location,
-                             separador="trip_number")
-beep(sound=1,expr=NULL)
+Maxdist_01params<-calculate_maxdist(GSM_data = GSM_trips, 
+                                    central_location = data.frame(Longitude=-110.34,Latitude=24.28),
+                                    divider="trip_number")
+beepr::beep(sound=1,expr=NULL)
 ```
 
 # --------------------
@@ -1588,6 +1627,12 @@ devtools::document()
 devtools::check()
 ```
 
+```{r}
+usethis::use_package("geosphere")
+usethis::use_package("stringr")
+usethis::use_package("tidyr")
+```
+
 ```{r, eval=FALSE,echo=FALSE}
 interpolate_trips<-function(my_df=my_df,
                             interval=interval,
@@ -1648,6 +1693,10 @@ interpolate_trips<-function(my_df=my_df,
   
   return(Trips_interp)
 }
+```
+
+```{r}
+Interpolation_trips<-Interpolation_trips
 ```
 
 ```{r}
@@ -1737,21 +1786,6 @@ length(unique(Trips_03trips$trip_number))
 
 Any missing?
 
-```{r}
-compare_notrips<-function(my_params=my_params,my_locs=my_locs){
 
-  values1<-data.frame(id=unique(my_locs$trip_number),origin='values1')
-  values2<-data.frame(id=unique(my_params$trip_id),origin='values2')
-  valuescomparison<-merge(values1,values2,by='id',all=TRUE)
-  missingvalues1<-valuescomparison %>% 
-    filter(is.na(origin.x))
-  missingvalues2<-valuescomparison %>% 
-    filter(is.na(origin.y))
-print(paste0('There are ',length(unique(my_locs$trip_number)),' trips in locations, and ',
-             length(unique(my_params$trip_id)),' in parameters'))
-print(paste0('There are ',nrow(missingvalues1),' trips in locations, and ',
-             nrow(missingvalues1),' in parameters'))
-}
-```
 
 # end of document

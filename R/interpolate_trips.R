@@ -2,7 +2,7 @@
 #'
 #' @param my_df is the data frame to interpolate
 #' @param interval is the interval you want to use, in seconds, for example 900 s is 15 minutes
-#' @param column_date is the name of the column where you have the Date and Time
+#' @param column_datetime is the name of the column where you have the Date and Time
 #' @param datetime_format is the format you use for your date and time, for example "%d/%m/%Y %H:%M:%S", "%d-%m-%Y %H:%M:%S" or "%Y-%m-%d %H:%M:%S"
 #' @param column_lat is the name of the column where you have the Latitude
 #' @param column_lon is the name of the column where you have the Longitude
@@ -11,7 +11,13 @@
 #' @return Gives back a data frame with the interpolated data, only four columns will be returned: dt, Longitude, Latitude, and trip_number
 #' @export
 #'
-#' @examples interpolate_trips(my_df=Interpolation_trips,interval='900 sec',column_datetime='daytime',column_trip='trip_number',column_lat='Latitude',column_lon='Longitude',datetime_format="%Y-%m-%d %H:%M:%S")
+#' @examples interpolate_trips(my_df=Interpolation_trips,
+#'interval='900 sec',
+#'column_datetime='daytime',
+#'column_trip='trip_number',
+#'column_lat='Latitude',
+#'column_lon='Longitude',
+#'datetime_format="%Y-%m-%d %H:%M:%S")
 
 interpolate_trips<-function(my_df=my_df,
                             interval=interval,

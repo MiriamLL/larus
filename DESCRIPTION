@@ -17,7 +17,10 @@ URL: https://github.com/MiriamLL/larus
 BugReports: https://github.com/MiriamLL/larus/issues
 Imports: 
     dplyr,
+    geosphere,
     ggplot2,
     magrittr,
     sf,
-    sp
+    sp,
+    stringr,
+    tidyr

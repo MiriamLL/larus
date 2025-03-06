@@ -16,9 +16,9 @@ check_resolution_criteria<-function(my_params=my_params){
 
 
   print(paste0("From ",sum(resolution_criteria$n),' trips: ',
-               round(resolution_criteria$prop[1],2),' (n = ',resolution_criteria$n[1],') were ',
+               round(resolution_criteria$prop[1],2),' % (n = ',resolution_criteria$n[1],') were ',
                resolution_criteria$resolution[1],' and ',
-               round(resolution_criteria$prop[2],2),' (n = ',resolution_criteria$n[2],') were ',
+               round(resolution_criteria$prop[2],2),' % (n = ',resolution_criteria$n[2],') were ',
                resolution_criteria$resolution[2],
                '. Evaluate if trips with low resolution are to be kept'))
 

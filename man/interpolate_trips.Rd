@@ -19,6 +19,8 @@ interpolate_trips(
 
 \item{interval}{is the interval you want to use, in seconds, for example 900 s is 15 minutes}
 
+\item{column_datetime}{is the name of the column where you have the Date and Time}
+
 \item{datetime_format}{is the format you use for your date and time, for example "\%d/\%m/\%Y \%H:\%M:\%S", "\%d-\%m-\%Y \%H:\%M:\%S" or "\%Y-\%m-\%d \%H:\%M:\%S"}
 
 \item{column_lat}{is the name of the column where you have the Latitude}
@@ -26,8 +28,6 @@ interpolate_trips(
 \item{column_lon}{is the name of the column where you have the Longitude}
 
 \item{column_trip}{is the name of the column where you have the Trip number, if you dont have number of trip please check the function count_trips}
-
-\item{column_date}{is the name of the column where you have the Date and Time}
 }
 \value{
 Gives back a data frame with the interpolated data, only four columns will be returned: dt, Longitude, Latitude, and trip_number
@@ -36,5 +36,11 @@ Gives back a data frame with the interpolated data, only four columns will be re
 Interpolate_trips, interpolate your tracking data to a specific interval
 }
 \examples{
-interpolate_trips(my_df=Interpolation_trips,interval='900 sec',column_datetime='daytime',column_trip='trip_number',column_lat='Latitude',column_lon='Longitude',datetime_format="\%Y-\%m-\%d \%H:\%M:\%S")
+interpolate_trips(my_df=Interpolation_trips,
+interval='900 sec',
+column_datetime='daytime',
+column_trip='trip_number',
+column_lat='Latitude',
+column_lon='Longitude',
+datetime_format="\%Y-\%m-\%d \%H:\%M:\%S")
 }
