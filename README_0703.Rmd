@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# larus
+# larus <img src="man/figures/logo.png" align="right" width = "120px"/>
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -285,10 +285,6 @@ devtools::document()
 devtools::check()
 ```
 
-```{r}
-head(GSM_locs)
-```
-
 ```{r, message=FALSE}
 library(tidyverse)
 ```
@@ -343,7 +339,7 @@ usethis::use_package("ggplot2")
 plot_check(my_locs=GSM_locs,my_central_location = data.frame(Longitude=-110.34,Latitude=24.28))
 ```
 
-```{r}
+```{r, eval=FALSE}
 plot_check(my_locs=Trips_01locs,my_central_location = my_central_location)
 ```
 
@@ -389,7 +385,7 @@ devtools::check()
 Previous_params<-data.frame(trip_id=c("trip_00001"))
 ```
 
-```{r}
+```{r, message=FALSE}
 trip_number_sequence<-continue_trip_sequence(my_previous=Previous_params$trip_id)
 ```
 
@@ -404,7 +400,7 @@ Trips_03trips<-Trips_02outside %>%
 
 ### Step 5: plot_trips
 
-function: plot_trips
+Visualize trips
 
 ```{r, echo=FALSE, eval=FALSE}
 plot_trips<-function(my_locs=my_locs,my_central_location=my_central_location){
@@ -443,7 +439,7 @@ ggplot2::ggplot()+
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 plot_trips(my_locs=Trips_03trips,my_central_location=my_central_location)
 ```
 
@@ -532,6 +528,8 @@ devtools::document()
 devtools::check()
 ```
 
+Create data frame with trip_start, trip_end, duration, gap minimum, gap maximum per trip
+
 ```{r}
 Trips_04params<-calculate_params(my_locs=GSM_trips,
                                  my_daytime='daytime',
@@ -539,7 +537,6 @@ Trips_04params<-calculate_params(my_locs=GSM_trips,
                                  my_units="hours",
                                  my_divider="trip_number",
                                  my_gaps='gaps_min')
-head(Trips_04params)
 ```
 
 Define trip_month_id in case there are outliers and the locations need to be subset
@@ -552,7 +549,7 @@ Trips_05params<-Trips_04params %>%
 
 ### Step 7: compare_notrips
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 usethis::use_r("compare_notrips")
 compare_notrips<-function(my_params=my_params,my_locs=my_locs){
 
@@ -592,6 +589,8 @@ compare_notrips<-function(my_params=my_params,my_locs=my_locs){
                nrow(missingvalues1),' in parameters'))
 }
 ```
+
+Check that the same number of trips are in the locations and in the parameters
 
 ```{r}
 compare_notrips(my_params=GSM_params,my_locs=GSM_trips)
@@ -677,6 +676,8 @@ devtools::document()
 devtools::check()
 ```
 
+Add information of the criteria to keep or not some trips based on trip duration (trip_size), resolution (recording intervals), duration (trips should be shorter than 24 hrs), interpolation (just trips that are longer than 30 minutes, have intervals of < 60 minutes and last then than 24 hours would be considered for interpolation)
+
 ```{r}
 Params_00criteria<-classify_params(my_params=GSM_params)
 ```
@@ -741,6 +742,7 @@ check_trip_criteria<-function(my_params=my_params){
 ```{r}
 check_trip_criteria(my_params=Params_00criteria)
 ```
+Remove short trips from the foraging trips
 
 ```{r}
 Params_01criteria<-Params_00criteria %>%
@@ -748,6 +750,8 @@ Params_01criteria<-Params_00criteria %>%
 ```
 
 ## Step 3: check_resolution_criteria
+
+Check if the intervals affected the trips detected
 
 ```{r, eval=FALSE, echo=FALSE}
 Params_resolution<-Params_01criteria
@@ -795,12 +799,16 @@ devtools::check()
 check_resolution_criteria(my_params=Params_resolution)
 ```
 
-## Step 4: check_lenght_criteria
+If they do not pass the criteria remove from the dataframe
 
 ```{r}
 Params_02criteria<-Params_01criteria %>%
   dplyr::filter(resolution == 'ok_resolution_gaps_less_60_mins')
 ```
+
+## Step 4: check_lenght_criteria
+
+Check if the trips were not longer than 24 hrs (longer_than_24h_reevaluate_centralloc)
 
 ```{r, echo=FALSE, eval=FALSE}
 usethis::use_r("check_length_criteria")
@@ -835,8 +843,11 @@ devtools::check()
 check_length_criteria(my_params=Params_resolution)
 ```
 
+If there are trips longer than 24 hrs reevaluate their central location
 
-## classify_locs
+## Step 5: classify_locs
+
+Add the information from the parameters data frame to the locations
 
 ```{r, eval=FALSE,echo=FALSE}
 usethis::use_r("classify_locs")
@@ -892,18 +903,15 @@ Locs_01class<-classify_locs(Inter_params=Interpolation_params,
 
 ## Reevaluate trips
 
+Some trips might not seem real, is it because of the resolution or because the animal move from central location?
+
 ## Step 1: check outliers
 
-Check big outliers
-
-```{r}
-head(Params_resolution)
-```
+Which trips were longer than 24 hrs?
 
 ```{r}
 Reevaluate<-Params_resolution %>%
   dplyr::filter(params_analyses!='shorter_than_24h_keep_centralloc')
-Reevaluate
 ```
 
 Are this outliers due to gaps of the intervals?
@@ -917,14 +925,12 @@ print(paste0("Max gaps was: ",
 
 ## Step 2: extract locs
 
-Identify ids 
+Identify ids and use the ids to subset the locations 
 
 ```{r}
 Reevaluate_tripid<-unique(Reevaluate$trip_id)
 Reevaluate_tripid
 ```
-
-## Step 3: subset locations
 
 ```{r}
 Reevaluate_01locs<-GSM_trips %>%
@@ -933,27 +939,22 @@ Reevaluate_01locs<-GSM_trips %>%
 head(Reevaluate_01locs)
 ```
 
-## Step 4: identify new central location
+## Step 3: identify new central location
 
-```{r}
-my_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
-```
-
-```{r, fig.height=4}
-plot_check(my_locs=Reevaluate_01locs,my_central_location = my_central_location)+
-  ggplot2::facet_wrap(~trip_number)
-```
+Use the plot to change the central location, either by seeing all trips or one trip at a time
 
 ```{r}
 new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
 ```
 
-```{r, fig.height=4}
+```{r, fig.height=4, eval=FALSE}
 plot_check(my_locs=Reevaluate_01locs,my_central_location = my_central_location)+
   ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='orange',shape=17, size=5)
 ```
 
-## Step 5: create_buffer
+## Step 4: create_buffer
+
+Use the central location to make a buffer 
 
 ```{r, eval=FALSE, echo=FALSE}
 usethis::use_r("create_buffer")
@@ -995,7 +996,9 @@ create_buffer<-function(central_point=central_point, buffer_km=buffer_km){
 new_central_buffer<-create_buffer(central_point=new_central_location,buffer_km=0.3)
 ```
 
-## Step 6: from_df_to_sf
+## Step 5: from_df_to_sf
+
+Convert the locations into a sf
 
 ```{r}
 Reevaluate_tripid<-'trip_00512'
@@ -1053,7 +1056,9 @@ devtools::document()
 Reevaluate_02sf<-from_df_to_st(Reevaluate_locs)
 ```
 
-## Step 7: over
+## Step 6: over
+
+This function gives the information if the location was in or out of the central location
 
 ```{r,eval=FALSE, echo=FALSE}
 Reevaluate_sf<-Reevaluate_02sf
@@ -1063,10 +1068,6 @@ save(Reevaluate_sf, file = "Reevaluate_sf.RData", version = 2)
 usethis::use_r("Reevaluate_sf")
 devtools::document()
 devtools::check()
-```
-
-```{r}
-new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
 ```
 
 ```{r}
@@ -1114,7 +1115,10 @@ Reevaluate_locs$central_location<- larus::over(my_locations=Reevaluate_sf,
                                                my_polygon=Reevaluate_polygon)
 ```
 
-## Step 8: add_trip_number
+## Step 7: add_trip_number
+
+This function adds a trip number on the locations.  
+Take care to have the correct information on previous params
 
 ```{r,eval=FALSE, echo=FALSE}
 Reevaluate_trips<-Reevaluate_locs
@@ -1130,7 +1134,7 @@ devtools::check()
 Previous_params<-GSM_params$trip_id
 ```
 
-```{r}
+```{r, message=FALSE}
 new_trip_number_sequence<-continue_trip_sequence(my_previous=Previous_params)
 ```
 
@@ -1198,19 +1202,16 @@ Reevaluate_04trips<-add_trip_number(my_df=Reevaluate_trips,
                                     my_trip_number_sequence=new_trip_number_sequence)
 ```
 
-```{r}
+Plot to check that the central location corresponds to your example
+
+```{r, eval=FALSE}
 new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
-```
-
-```{r}
-Reevaluate_04trips<-Reevaluate_trips
-```
-
-```{r}
 plot_trips(my_locs=Reevaluate_04trips,my_central_location=new_central_location)
 ```
 
-## Step 9: calculate params
+## Step 8: calculate params
+
+Identify trip_start, end, duration and gaps
 
 ```{r}
 Reevaluate_05params<-calculate_params(my_locs=Reevaluate_trips,
@@ -1220,13 +1221,9 @@ Reevaluate_05params<-calculate_params(my_locs=Reevaluate_trips,
                                  my_divider="trip_number",
                                  my_gaps='gaps_min'
                                  )
-head(Reevaluate_05params)
 ```
 
-```{r}
-This_month<-'08'
-This_month_text<-'Ago'
-```
+Add this information on the parameters
 
 ```{r}
 Reevaluate_05params<-Reevaluate_05params %>%
@@ -1234,32 +1231,26 @@ Reevaluate_05params<-Reevaluate_05params %>%
   dplyr::mutate(central_loc='south_of_colony')
 ```
 
-```{r, fig.height=4}
-hist(Reevaluate_05params$duration)
-```
+## Step 9: plot_trips
 
-## Step 10: plot_trips
+Check the new trip separation
 
-```{r}
+```{r, eval=FALSE}
 plot_trips(my_locs=Reevaluate_04trips,my_central_location = new_central_location)+
   ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='blue',shape=17, size=5)
 ```
 
-## Step 11: classify params
+## Step 10: classify params
+
+Add classification information to see if fits the criteria
 
 ```{r}
 Params_03reevaluate<-classify_params(my_params=Reevaluate_05params)
 ```
 
-# Functions within functions 
-
-```{r}
-Params_criteria %>%
-  filter(duration>24)%>%
-  arrange(-duration)
-```
-
 ## Subset evaluation
+
+This steps can be made separately by trip
 
 ```{r, eval=FALSE, echo=FALSE}
 usethis::use_r("subset_reevaluation")
@@ -1307,24 +1298,14 @@ subset_reevaluation<-function(my_tripid=my_tripid,
 }
 ```
 
-Previous central location
-```{r}
-nest_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
-```
-
-New_central location
-```{r}
-new_central_location<-data.frame(Longitude=-110.3269,Latitude=24.152)
-```
-
-```{r}
+```{r, eval=FALSE}
 subset_reevaluation(my_trip=GSM_trips,my_tripid='trip_00528',
                     new_central_location=data.frame(Longitude=-110.32,Latitude=24.15),
                     old_central_location=data.frame(Longitude=-110.34,Latitude=24.28))
 ```
 ## identify_trip_reevaluation
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 usethis::use_r("identify_trips_reevaluation")
 identify_trips_reevaluation<-function(my_trip=my_trip,my_central_location=my_central_location,my_previous_params=my_previous_params){
   
@@ -1344,12 +1325,6 @@ identify_trips_reevaluation<-function(my_trip=my_trip,my_central_location=my_cen
 }
 ```
 
-```{r}
-LALI05_06jun_reevaluate_02trips<-identify_trips_reevaluation(my_trip=Reevaluate_trips,
-                                                             my_central_location=data.frame(Longitude=-110.3269,Latitude=24.152),
-                                                             my_previous_params=Params_criteria$trip_id)
-```
-
 # --------------------
 
 # 5. Merge 
@@ -1359,21 +1334,13 @@ LALI05_06jun_reevaluate_02trips<-identify_trips_reevaluation(my_trip=Reevaluate_
 Add criteria classifications
 
 ```{r}
-Params_02criteria
-Params_03reevaluate
-```
-
-```{r}
 Params_merged<-rbind(Params_02criteria %>% dplyr::filter(!trip_id %in% Reevaluate_tripid),
                      Params_03reevaluate)
 ```
 
 ## Step 2: Locs merged
 
-```{r}
-GSM_trips
-Reevaluate_04trips
-```
+Use the parameters information to add classification to locations
 
 ```{r}
 Locs_merged <-rbind(GSM_trips %>% 
@@ -1397,34 +1364,7 @@ Locs_merged <-rbind(GSM_trips %>%
 
 # 6. Path lenght
 
-```{r}
-library(larus)
-```
-
-```{r}
-GSM_trips<-GSM_trips
-```
-
-## calculate_distances
-
-This function has no divider, it can be used by individuals trips
-
-```{r,eval=FALSE, echo=FALSE}
-calculate_distances<-function(my_data=my_data){
-  my_coords<- my_data[,c('Longitude','Latitude')]
-  my_spatial <- sp::SpatialPointsDataFrame(coords = my_coords, data = my_data)
-  sp::proj4string(my_spatial)= sp::CRS("+init=epsg:4326")
-  my_distance<-sapply(2:nrow(my_spatial),
-                             function(i){geosphere::distm(my_spatial[i-1,], my_spatial[i,])})
-  my_distances<-c(NA,my_distance)
-  my_data$dist_km<-my_distances/1000
-  return(my_data)
-}
-calculate_distances(my_data=GSM_trips)
-```
-
-
-Remove small trips
+## Step 1: Remove small trips
 
 ```{r, eval=FALSE}
 my_trips<-GSM_trips
@@ -1446,8 +1386,24 @@ devtools::document()
 devtools::check()
 ```
 
-## distances_per_trip
-This function is a loop that separated per divider
+```{r,eval=FALSE, echo=FALSE}
+# this function was not included
+calculate_distances<-function(my_data=my_data){
+  my_coords<- my_data[,c('Longitude','Latitude')]
+  my_spatial <- sp::SpatialPointsDataFrame(coords = my_coords, data = my_data)
+  sp::proj4string(my_spatial)= sp::CRS("+init=epsg:4326")
+  my_distance<-sapply(2:nrow(my_spatial),
+                             function(i){geosphere::distm(my_spatial[i-1,], my_spatial[i,])})
+  my_distances<-c(NA,my_distance)
+  my_data$dist_km<-my_distances/1000
+  return(my_data)
+}
+calculate_distances(my_data=GSM_trips)
+```
+
+## Step 2: distances_per_trip
+
+This function is a loop that separates trip per divider and calculate distances per trip and adds them to the locations
 
 ```{r,eval=FALSE, echo=FALSE}
 usethis::use_r("distances_per_trip")
@@ -1491,7 +1447,7 @@ Path_distances %>%
   dplyr::mutate(trip_id=trip_number)
 ```
 
-## calculate leaving and returning distance
+## Step 3: calculate leaving and returning distance
 
 ```{r,eval=FALSE, echo=FALSE}
 usethis::use_r("calculate_leaving_returning")
@@ -1595,10 +1551,6 @@ calculate_leaving_returning<-function(my_locs=my_locs,my_central_location=my_cen
 ```
 
 ```{r}
-library(larus)
-```
-
-```{r}
 Path_leaving_returning<-calculate_leaving_returning(my_locs=Path_trips,
                                                     my_central_location=data.frame(Longitude=-110.33,Latitude=24.287))
 ```
@@ -1609,11 +1561,12 @@ Careful: exclude those trips that the central_location was south of the colony f
 
 # 7. Maximum distances
 
+## Step 1: Calculate maximum distances per trip, returns parameters
+
 ```{r}
-Maxdist_01params<-calculate_maxdist(GSM_data = GSM_trips, 
+Maxdist_params<-calculate_maxdist(my_data =GSM_trips, 
                                     central_location = data.frame(Longitude=-110.34,Latitude=24.28),
                                     divider="trip_number")
-beepr::beep(sound=1,expr=NULL)
 ```
 
 # --------------------
@@ -1630,20 +1583,9 @@ If your study’s analysis can handle missing data or gaps (e.g., for high-level
 If your analysis is based on trajectory or movement behavior, you could use gap-filling approaches like predicting the bird’s behavior based on its last known location and surrounding environmental context (such as weather, time of day, etc.).
 
 
-```{r}
-Inter_params<-Params_resolution
-Inter_locs<-GSM_trips
-```
-
 ## Step 1: exclude trips longer than 24 hrs with gaps larger than 60 minutes
 
-```{r}
-Inter_params %>%
-  dplyr::group_by(interpolation)%>%
-  dplyr::tally()
-```
-
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_01params<-Inter_params %>%
   dplyr::filter(interpolation=='gapsless60mins_shorter24hr_canditate_interpolate')
 ```
@@ -1658,12 +1600,12 @@ devtools::document()
 devtools::check()
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_02locs<-classify_locs(Inter_params=Interpolation_params,
                             Inter_locs=GSM_trips)
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_02locs %>%
   dplyr::group_by(trip_size)%>%
   dplyr::tally()
@@ -1673,34 +1615,34 @@ Inter_02locs %>%
 
 The part of don't interpolate would be large because it includes resting and overnight locations
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_02locs %>%
   dplyr::group_by(interpolation)%>%
   dplyr::tally()
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 my_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 plot_trips(my_locs=Inter_02locs,my_central_location = my_central_location)
 ```
 
 ## Step 3: check included
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_03included <- Inter_02locs %>%
   dplyr::filter(interpolation == 'gapsless60mins_shorter24hr_canditate_interpolate')
 ```
 
-```{r, fig.height=4}
+```{r,eval=FALSE, echo=FALSE, fig.height=4}
 plot_trips(my_locs=Inter_03included,my_central_location = my_central_location)
 ```
 
 ## Step 4: check excluded
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_04excluded <- Inter_02locs %>%
   #dplyr::filter(trip_size == 'trip_longer_than_30mins')%>%
   dplyr::filter(interpolation != 'gapsless60mins_shorter24hr_canditate_interpolate')
@@ -1711,35 +1653,31 @@ plot_trips(my_locs=Inter_04excluded,my_central_location = my_central_location)+
   ggplot2::facet_wrap(~trip_number)
 ```
 
-Trip 445
-Trip 508 
-Trip 512
-Trip 518 
-Trip 528 Seem legit, and maybe should be reconsidered if central location is identified. 
+Trip 0512 Seem legit, and maybe should be reconsidered if central location is identified. 
 Look genuinely that the bird change location.
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 this_trip<-'trip_00512'
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_params %>%
   dplyr::filter(trip_id==this_trip)
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 Inter_05reevaluate<-Inter_04excluded %>%
   dplyr::filter(trip_number==this_trip)
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 dplyr::first(Inter_05reevaluate$daytime)
 dplyr::last(Inter_05reevaluate$daytime)
 ```
 
 ## Step 5: new central location
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 plot_check<-function(my_locs=my_locs,my_central_location=my_central_location){
   ggplot2::ggplot()+
   ggplot2::geom_point(data = my_locs, ggplot2::aes(x=Longitude, y = Latitude),
@@ -1751,7 +1689,7 @@ plot_check<-function(my_locs=my_locs,my_central_location=my_central_location){
   ggplot2::ggtitle('Check that the triangle is close to the highest location concentration- \nThis should be your central location-  \nIf the central location is shifted -  \nPlease recalculate using another central location')}
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
 plot_check(my_locs=Inter_05reevaluate,my_central_location = new_central_location)+
   ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='red',shape=17, size=5)
@@ -1759,17 +1697,17 @@ plot_check(my_locs=Inter_05reevaluate,my_central_location = new_central_location
 
 ## Step 6: reevaluate_params
 
-```{r}
-Inter_05reevaluate
+```{r,eval=FALSE, echo=FALSE}
+head(Inter_05reevaluate)
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 this_locs=Inter_05reevaluate
 this_central_location=new_central_location
 this_previous=Inter_params
 ```
 
-```{r}
+```{r,eval=FALSE, echo=FALSE}
 recalculate_params<-function(this_locs,
                             this_central_location,
                             this_previous){
@@ -1801,18 +1739,18 @@ my_params<-calculate_params(my_locs=my_trips,
 return(my_params)}
 ```
 
-```{r,eval=FALSE}
+```{r,eval=FALSE, echo=FALSE}
 Inter_06params<-recalculate_params(this_locs=Inter_05reevaluate,
                                    this_central_location=new_central_location,
                                    this_previous=Inter_params)
 Inter_06params
 ```
 
-```{r,eval=FALSE}
+```{r,eval=FALSE, echo=FALSE}
 This_month_text<-"Ago"
 ```
 
-```{,eval=FALSEr}
+```{r,eval=FALSE, echo=FALSE}
 Inter_06params<-Inter_06params%>%
   dplyr::mutate(trip_month_id=paste0(This_month_text,"_c_",trip_id))%>%
   dplyr::mutate(central_loc='south_of_colony')
@@ -1918,6 +1856,11 @@ Interpolated_locs<-interpolate_trips(my_df=Interpolation_trips,
 
 # Example
 
+```{r}
+library(tidyverse)
+library(larus)
+```
+
 # 1. Identify trips
 
 ```{r}
@@ -2006,30 +1949,31 @@ GSM_params %>%
 Trips must have at least three locations.
 Remove small trips
 
-```{r, eval=FALSE}
+```{r}
 my_trips<-GSM_trips
 short_trips<-my_trips %>%
-  dplyr::group_by(trip_number)%>%
-  dplyr::tally()%>%
-  dplyr::arrange(-n)%>%
-  dplyr::filter(n<3)
-Path_trips<-larus::GSM_trips %>%
-  dplyr::filter(!trip_number %in% unique(short_trips$trip_number))
+  group_by(trip_number)%>%
+  tally()%>%
+  arrange(-n)%>%
+  filter(n<3)
+Path_trips<-GSM_trips %>%
+  filter(!trip_number %in% unique(short_trips$trip_number))
 ```
 
 Calculate distances per trip.
 Might take some time.
 
-```{r,eval=FALSE}
+```{r}
 Path_distances<-distances_per_trip(my_df=Path_trips,
                                    my_divider='trip_number')
 beepr::beep(sound=1)
 ```
+
 ```{r}
 range(Path_distances$pointsdist_km,na.rm=TRUE)
 ```
 
-```{r,eval=FALSE}
+```{r}
 Path_params<-Path_distances %>% 
   dplyr::group_by(trip_number)%>%
   dplyr::summarise(path_lenght_km=sum(pointsdist_km,na.rm=TRUE))%>%
@@ -2053,104 +1997,120 @@ calculate leaving and returning
 
 ```{r}
 Params_leaving_returning<-calculate_leaving_returning(my_locs=Path_trips,
-                                                    my_central_location=data.frame(Longitude=-110.33,Latitude=24.287))
+                                                      my_central_location=data.frame(Longitude=-110.33,Latitude=24.287))
 ```
 
 ```{r}
-library(tidyverse)
-```
-
-```{r}
-Params_path<-Params_leaving_returning %>%
-  rename(trip_id=trip_number)%>%
-  right_join(Params_path,by='trip_id')
+Params_sumpath<-Params_leaving_returning %>%
+  dplyr::rename(trip_id=trip_number)%>%
+  dplyr::right_join(Params_path,by='trip_id')
 ```
 
 Sum distances
 
+Identify central location, if is from the nest it add leaving and returning, if is outside the nest it doesn't add this. 
+
 ```{r}
-Params_12path<-Params_11path %>%
-  rename(central_location=central_location.y)%>%
-  mutate(sum_path_lenght=case_when(central_location == "colony" ~ 
-                                     path_lenght_km + leaving_distance_km + returning_distance_km,
-                               central_location != "colony" ~ 
-                                 path_lenght_km))
+Params_sumpaths<-Params_sumpath %>%
+  #dplyr::rename(central_location=central_location.y)%>%
+  dplyr::mutate(sum_path_lenght=dplyr::case_when(central_location == "colony" ~ path_lenght_km + leaving_distance_km + returning_distance_km,
+                                                 central_location != "colony" ~ path_lenght_km))
 ```
 
 Select columns
 
 ```{r}
-Params_13path<-Params_12path %>%
+Params_wpath<-Params_sumpaths %>%
   dplyr::select(trip_month_id,central_location,
          path_lenght_km,leaving_distance_km,returning_distance_km,
          sum_path_lenght,
          central_lat,central_lon,
          trip_number,
-         countday,day,season,month,
-         n,
+         #countday,day,season,month,n,
          trip_start,trip_end,
          duration,min_gap,max_gap,
-         
-         trip_size,resolution,params_analyses,interpolation)
+         #trip_size,resolution,params_analyses,interpolation
+         )
 ```
 
-## check outliers
+check outliers
 
 ```{r}
-Params_13path %>%
-  arrange(-sum_path_lenght)
+Params_wpath %>%
+  dplyr::arrange(-sum_path_lenght)
 ```
 
+
 ```{r}
-plot_trips(my_locs=Path_01locs %>%
-  filter(trip_number=='trip_00060'),my_central_location=nest_central_location)+
-  ggtitle('This trip leaving location was far from the colony, meaning previous locations were not recorded')
+plot_trips(my_locs=Path_trips %>%
+  dplyr::filter(trip_number=='trip_00521'),my_central_location=my_central_location)+
+  ggplot2::ggtitle('This trip leaving location was far from the colony, \nmeaning returning and leaving were not included')
 ```
 
-# Check speed
+Speed
 
 ```{r}
-Path_05locs<-Path_03distances %>%
+Path_speed<-Path_distances %>%
   mutate(speed_if_directly_flying=pointsdist_km/gaps_min*60)%>%
-  dplyr::select(ID,trip_number,num_seq,
-         countday,season,month,
+  select(ID,trip_number,num_seq,
+         #countday,season,month,
          daytime,
          Longitude,Latitude,
-         battery_charge,battery_class,
-         gaps_class,
-         central_location,day_or_night,
-         trip_size,resolution,params_analyses,interpolation,
+         #battery_charge,battery_class, gaps_class,
+         #central_location,day_or_night,
+         #trip_size,resolution,params_analyses,interpolation,
          pointsdist_km,gaps_min,
-         ground.speed,speed_if_directly_flying
+         #ground.speed,
+         speed_if_directly_flying
          )
 ```
 
 ```{r}
-Path_05locs %>%
+Path_speed %>%
   filter(speed_if_directly_flying > 70)%>%
   arrange(-speed_if_directly_flying)
 ```
 
-```{r}
-plot_trips(my_locs=Path_01locs %>%
-  filter(trip_number=='trip_00283'),my_central_location=nest_central_location)+
-  ggtitle('This trip leaving location was far from the colony, meaning previous locations were not recorded')
-```
-and remember gulls do whatever they want
 
 ```{r}
-Params_14path<-Params_13path %>%
-  filter(trip_number!='trip_00283')%>%
+exceeds_speed<-'trip_00521'
+```
+
+```{r}
+plot_trips(my_locs=Path_speed %>%
+  filter(trip_number==exceeds_speed),my_central_location=my_central_location)+
+  ggtitle('If the speed is >70 km, \n remove that trip or reevaluate it')
+```
+
+And remember gulls do whatever they want
+
+```{r}
+Params_wpath<-Params_wpath %>%
+  filter(trip_number!=exceeds_speed)%>%
   rename(trip_id=trip_number)
-Path_06locs<-Path_05locs %>%
-  filter(trip_number!='trip_00283')
+Path_speed<-Path_speed %>%
+  filter(trip_number!=exceeds_speed)
 ```
-
-## compare
 
 ```{r}
-compare_notrips(my_params=Params_14path,my_locs=Path_06locs)
+compare_notrips(my_params=Params_wpath,my_locs=Path_speed)
 ```
 
+# 4. Maxdistance
+
+```{r}
+GSM_test<-GSM_trips %>%
+  filter(trip_number %in% c("trip_00406","trip_00407","trip_00408","trip_00409","trip_00410","trip_00411","trip_00412","trip_00413","trip_00414","trip_00415","trip_00416","trip_00417"))
+```
+
+```{r}
+Maxdist_params<-calculate_maxdist(my_data =GSM_test, 
+                                    central_location = data.frame(Longitude=-110.34,Latitude=24.28),
+                                    divider="trip_number")
+```
+
+```{r}
+head(Maxdist_params)
+```
 
 # end of document
