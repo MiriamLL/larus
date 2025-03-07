@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# larus <img src="man/figures/logo.png" align="right" width = "120px"/>
+# larus <img src="man/figures/logo_larus_png.png" align="right" width = "120px"/>
 
 <!-- badges: start -->
 <!-- badges: end -->
