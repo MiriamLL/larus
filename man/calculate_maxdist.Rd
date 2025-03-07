@@ -5,17 +5,17 @@
 \title{Calculate maximum distance per trip}
 \usage{
 calculate_maxdist(
-  GSM_data = GSM_data,
+  my_data = my_data,
   central_location = central_location,
   divider = divider
 )
 }
 \arguments{
+\item{my_data}{a data frame with 'Longitude','Latitude'}
+
 \item{central_location}{a data frame with 'Longitude','Latitude'}
 
 \item{divider}{column name for divider}
-
-\item{GSM_trips}{a data frame with 'Longitude','Latitude'}
 }
 \value{
 returns data frame with maximum distance per trip
@@ -24,5 +24,5 @@ returns data frame with maximum distance per trip
 Calculate maximum distance per trip
 }
 \examples{
-calculate_maxdist(GSM_data = GSM_trips, central_location = data.frame(Longitude=-110.34,Latitude=24.28),divider="trip_number")
+calculate_maxdist(my_data = GSM_trips, central_location = data.frame(Longitude=-110.34,Latitude=24.28),divider="trip_number")
 }
