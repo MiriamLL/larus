@@ -15,8 +15,10 @@ check_trip_criteria<-function(my_params=my_params){
     dplyr::mutate(prop=n*100/total)
 
   print(paste0("From ",sum(trip_criteria$n),' trips: ',
-               round(trip_criteria$prop[1],2),'% were ',trip_criteria$trip_size[1],' and ',
-               round(trip_criteria$prop[2],2),'% were ',trip_criteria$trip_size[2],
+               round(trip_criteria$prop[1],2),'% (n=',trip_criteria$n[1],
+               ') were ',trip_criteria$trip_size[1],' and ',
+               round(trip_criteria$prop[2],2),'% (n=',trip_criteria$n[2],
+               ') were ',trip_criteria$trip_size[2],
                '. Trips shorter than 30 minutes are not considered real trips. Remove these trips from analyses. '
   ))
 

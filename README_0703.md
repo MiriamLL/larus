@@ -788,11 +788,11 @@ Trips_01locs<-GSM_locs %>%
 ```
 
 ``` r
-my_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
+nest_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
 ```
 
 ``` r
-plot_check(my_locs=Trips_01locs,my_central_location=my_central_location)
+plot_check(my_locs=Trips_01locs,my_central_location=nest_central_location)
 ```
 
 <img src="man/figures/README-unnamed-chunk-128-1.png" width="100%" />
@@ -822,7 +822,7 @@ Trips_03trips<-Trips_02outside %>%
 ```
 
 ``` r
-plot_trips(my_locs=Trips_03trips,my_central_location=my_central_location)
+plot_trips(my_locs=Trips_03trips,my_central_location=nest_central_location)
 ```
 
 <img src="man/figures/README-unnamed-chunk-133-1.png" width="100%" />
@@ -856,7 +856,13 @@ Trips_05params<-Trips_04params %>%
 ```
 
 ``` r
-compare_notrips(my_params=Trips_05params,my_locs=Trips_03trips)
+Trips_04trips<-Trips_03trips %>%
+  mutate(trip_month_id=paste0(This_month_text,"_a_",trip_number))%>%
+  mutate(central_location='colony')
+```
+
+``` r
+compare_notrips(my_params=Trips_05params,my_locs=Trips_04trips)
 #> [1] "There are 133 trips in locations, and 133 in parameters"
 #> [1] "There are 0 trips missing in locations, and 0 in parameters"
 ```
@@ -864,32 +870,136 @@ compare_notrips(my_params=Trips_05params,my_locs=Trips_03trips)
 # 2. Reevaluate
 
 ``` r
-GSM_params %>%
+Trips_05params %>%
   filter(duration>24)%>%
   arrange(-duration)
 #> # A tibble: 4 × 8
-#>   trip_id    trip_month_id   central_loc trip_start          trip_end           
-#>   <chr>      <chr>           <chr>       <dttm>              <dttm>             
-#> 1 trip_00512 Ago_a_trip_005… colony      2023-08-12 03:28:53 2023-08-19 04:13:52
-#> 2 trip_00518 Ago_a_trip_005… colony      2023-08-22 04:28:59 2023-08-23 16:59:35
-#> 3 trip_00506 Ago_a_trip_005… colony      2023-08-10 03:28:53 2023-08-11 13:29:55
-#> 4 trip_00445 Ago_a_trip_004… colony      2023-08-03 10:58:50 2023-08-04 16:58:55
-#> # ℹ 3 more variables: min_gap <dbl>, max_gap <dbl>, duration <dbl>
+#>   trip_id    trip_start          trip_end            duration min_gap max_gap
+#>   <chr>      <dttm>              <dttm>                 <dbl>   <dbl>   <dbl>
+#> 1 trip_00108 2023-08-12 03:28:53 2023-08-19 04:13:52    169.     9.28    20.2
+#> 2 trip_00114 2023-08-22 04:28:59 2023-08-23 16:59:35     36.5   28.9     31.4
+#> 3 trip_00102 2023-08-10 03:28:53 2023-08-11 13:29:55     34.0   14.0     30.5
+#> 4 trip_00041 2023-08-03 10:58:50 2023-08-04 16:58:55     30.0    9.13    20.8
+#> # ℹ 2 more variables: trip_month_id <chr>, central_location <chr>
 ```
 
-# 3. Path lenght
+Subset locations using parameters information, check plot, orange
+triangle should be on top of cluster of locations
+
+``` r
+reevaluate_tripid<-'trip_00114'
+```
+
+``` r
+rest_central_location<-data.frame(Longitude=-110.325,Latitude=24.17-0.01)
+```
+
+``` r
+Reevaluate_01locs<-subset_reevaluation(my_tripid=reevaluate_tripid,
+                                       my_trip=Trips_03trips,
+                                       new_central_location=rest_central_location,
+                                       old_central_location=nest_central_location)
+```
+
+<img src="man/figures/README-unnamed-chunk-143-1.png" width="100%" />
+
+``` r
+Reevaluate_02trips<-identify_trips_reevaluation(my_trip=Reevaluate_01locs,
+                                                my_central_location=rest_central_location,
+                                                my_previous_params=Trips_05params$trip_id)
+#> [1] "trip_00134"
+#> [1] 134
+#> [1] "From 1 original trip, the change in central location divided the locations to obtain 2 new trips"
+```
+
+``` r
+plot_trips(my_locs=Reevaluate_02trips,my_central_location=rest_central_location)+
+  theme(legend.position='right')
+```
+
+<img src="man/figures/README-unnamed-chunk-145-1.png" width="100%" />
+
+``` r
+Reevaluate_03params<-calculate_params(my_locs=Reevaluate_02trips,
+                                      my_daytime='daytime',
+                                      my_format=  "%Y-%m-%d %H:%M:%S",
+                                      my_units="hours",
+                                      my_divider="trip_number",
+                                      my_gaps="gaps_min")
+head(Reevaluate_03params)
+#> # A tibble: 2 × 6
+#>   trip_id    trip_start          trip_end            duration min_gap max_gap
+#>   <chr>      <dttm>              <dttm>                 <dbl>   <dbl>   <dbl>
+#> 1 trip_00135 2023-08-22 04:28:59 2023-08-23 15:29:14   35.0      28.9    31.4
+#> 2 trip_00136 2023-08-23 16:29:14 2023-08-23 16:59:35    0.506    30      30.4
+```
+
+``` r
+Reevaluate_04params<-Reevaluate_03params %>%
+  mutate(trip_month_id=paste0(This_month_text,"_b_",trip_id))%>%
+  mutate(central_location='south_of_colony')
+```
+
+``` r
+Reevaluate_03trips<-Reevaluate_02trips %>%
+  mutate(trip_month_id=paste0(This_month_text,"_a_",trip_number))%>%
+  mutate(central_location='colony')
+```
+
+Merge
+
+``` r
+Params_01params<-rbind(Trips_05params,
+                       Reevaluate_04params)
+```
+
+``` r
+Locs_01trips<-rbind(Trips_04trips,
+                    Reevaluate_03trips)
+```
+
+``` r
+compare_notrips(my_params=Params_01params,my_locs=Locs_01trips)
+#> [1] "There are 135 trips in locations, and 135 in parameters"
+#> [1] "There are 0 trips missing in locations, and 0 in parameters"
+```
+
+Remove reevaluated trips
+
+``` r
+Params_02params<-Params_01params %>%
+  filter(trip_id != reevaluate_tripid)
+```
+
+``` r
+Locs_02trips<-Locs_01trips %>%
+  filter(trip_number != reevaluate_tripid)
+```
+
+``` r
+compare_notrips(my_params=Params_02params,my_locs=Locs_02trips)
+#> [1] "There are 134 trips in locations, and 134 in parameters"
+#> [1] "There are 0 trips missing in locations, and 0 in parameters"
+```
+
+# 3. Classify trips
+
+# 4. Path lenght
 
 Trips must have at least three locations. Remove small trips
 
 ``` r
-my_trips<-GSM_trips
-short_trips<-my_trips %>%
-  group_by(trip_number)%>%
+short_trips<-Params_02params %>%
+  group_by(trip_id)%>%
   tally()%>%
   arrange(-n)%>%
   filter(n<3)
-Path_trips<-GSM_trips %>%
-  filter(!trip_number %in% unique(short_trips$trip_number))
+length(short_trips$trip_id)
+```
+
+``` r
+Path_trips<-Locs_02trips %>%
+  dplyr::filter(!trip_number %in% unique(short_trips$trip_id))
 ```
 
 Calculate distances per trip. Might take some time.
@@ -902,14 +1012,13 @@ beepr::beep(sound=1)
 
 ``` r
 range(Path_distances$pointsdist_km,na.rm=TRUE)
-#> [1]  0.00 13.28
 ```
 
 ``` r
 Path_params<-Path_distances %>% 
-  dplyr::group_by(trip_number)%>%
-  dplyr::summarise(path_lenght_km=sum(pointsdist_km,na.rm=TRUE))%>%
-  dplyr::mutate(trip_id=trip_number)
+  group_by(trip_number)%>%
+  summarise(path_lenght_km=sum(pointsdist_km,na.rm=TRUE))%>%
+  mutate(trip_id=trip_number)
 ```
 
 Merge
@@ -924,7 +1033,6 @@ Check if values are realistic
 
 ``` r
 range(Params_path$path_lenght_km)
-#> [1]   0.07 218.10
 ```
 
 calculate leaving and returning
@@ -973,23 +1081,6 @@ check outliers
 ``` r
 Params_wpath %>%
   dplyr::arrange(-sum_path_lenght)
-#> # A tibble: 47 × 14
-#>    trip_month_id    central_location path_lenght_km leaving_distance_km
-#>    <chr>            <chr>                     <dbl>               <dbl>
-#>  1 Ago_a_trip_00512 colony                    218.                 3.14
-#>  2 Ago_a_trip_00506 colony                     79.4                0.53
-#>  3 Ago_a_trip_00445 colony                     67.9                1.46
-#>  4 Ago_a_trip_00406 colony                     52.4                3.39
-#>  5 Ago_a_trip_00518 colony                     52.2                1.01
-#>  6 Ago_a_trip_00474 colony                     43.3                1.22
-#>  7 Ago_a_trip_00455 colony                     42.6                0.52
-#>  8 Ago_a_trip_00528 colony                     26.9                1.44
-#>  9 Ago_a_trip_00520 colony                     20.8                7.75
-#> 10 Ago_a_trip_00521 colony                     14.5               10.3 
-#> # ℹ 37 more rows
-#> # ℹ 10 more variables: returning_distance_km <dbl>, sum_path_lenght <dbl>,
-#> #   central_lat <dbl>, central_lon <dbl>, trip_number <chr>, trip_start <dttm>,
-#> #   trip_end <dttm>, duration <dbl>, min_gap <dbl>, max_gap <dbl>
 ```
 
 ``` r
@@ -997,8 +1088,6 @@ plot_trips(my_locs=Path_trips %>%
   dplyr::filter(trip_number=='trip_00521'),my_central_location=my_central_location)+
   ggplot2::ggtitle('This trip leaving location was far from the colony, \nmeaning returning and leaving were not included')
 ```
-
-<img src="man/figures/README-unnamed-chunk-151-1.png" width="100%" />
 
 Speed
 
@@ -1022,10 +1111,6 @@ Path_speed<-Path_distances %>%
 Path_speed %>%
   filter(speed_if_directly_flying > 70)%>%
   arrange(-speed_if_directly_flying)
-#> # A tibble: 0 × 9
-#> # ℹ 9 variables: ID <chr>, trip_number <chr>, num_seq <dbl>, daytime <dttm>,
-#> #   Longitude <dbl>, Latitude <dbl>, pointsdist_km <dbl>, gaps_min <dbl>,
-#> #   speed_if_directly_flying <dbl>
 ```
 
 ``` r
@@ -1037,8 +1122,6 @@ plot_trips(my_locs=Path_speed %>%
   filter(trip_number==exceeds_speed),my_central_location=my_central_location)+
   ggtitle('If the speed is >70 km, \n remove that trip or reevaluate it')
 ```
-
-<img src="man/figures/README-unnamed-chunk-155-1.png" width="100%" />
 
 And remember gulls do whatever they want
 
@@ -1052,11 +1135,9 @@ Path_speed<-Path_speed %>%
 
 ``` r
 compare_notrips(my_params=Params_wpath,my_locs=Path_speed)
-#> [1] "There are 46 trips in locations, and 46 in parameters"
-#> [1] "There are 0 trips missing in locations, and 0 in parameters"
 ```
 
-# 4. Maxdistance
+# 5. Maxdistance
 
 ``` r
 GSM_test<-GSM_trips %>%
