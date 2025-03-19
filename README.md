@@ -25,6 +25,15 @@ attached to gulls:
 2.  Identify foraging trips, classify is usable or not
 3.  The gulls just do whatever they want.
 
+<div class="figure">
+
+<img src="man/figures/WF_larus.jpg" alt="General workflow" width="100%" />
+<p class="caption">
+General workflow
+</p>
+
+</div>
+
 # ——————–
 
 # 1. The effect of the battery

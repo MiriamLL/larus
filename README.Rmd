@@ -37,6 +37,10 @@ There is three key issues in determining the foraging trips in GSMs attached to 
  2. Identify foraging trips, classify is usable or not
  3. The gulls just do whatever they want. 
 
+```{r pressure, echo=FALSE, fig.cap="General workflow", out.width = '100%'}
+knitr::include_graphics("man/figures/WF_larus.jpg")
+```
+
 # --------------------
 
 # 1. The effect of the battery
