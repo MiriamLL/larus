@@ -193,6 +193,37 @@ GSM_gaps_class %>%
 library(patchwork)
 ```
 
+### Battery and gaps per season
+
+```{r, fig.height=4, fig.width=6}
+GSM_battery_class %>%
+  group_by(season,battery_class)%>%
+  tally()%>%
+  mutate(total=sum(n))%>%
+  mutate(prop=n*100/total) %>%
+  
+ggplot(aes(fill=battery_class, y=prop, x=season)) + 
+  geom_bar(stat="identity")+
+  scale_fill_manual(values=c('#d7263d','#f46036','#2e294e'))+
+  theme_classic()+
+  scale_y_continuous(expand = c(0,0)) +
+  
+GSM_gaps_class  %>%
+  group_by(season,gaps_class)%>%
+  tally()%>%
+  mutate(total=sum(n))%>%
+  mutate(prop=n*100/total)%>%
+  filter(gaps_class!='8U') %>% #expect first position to be empty
+  
+ggplot(aes(fill=gaps_class, y=prop, x=season)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=c('#d7263d','#f46036','#ffc857','#c5d86d','#1b998b','#2e294e'))+
+  theme_classic()+
+  scale_y_continuous(expand = c(0,0)) +
+  
+plot_layout(ncol = 1)
+```
+
 ### Battery and gaps per month
 
 ```{r, fig.height=4}
@@ -259,8 +290,8 @@ library(tidyverse)
 ```
 
 ```{r}
-This_month<-'07'
-This_month_text<-'Jun'
+This_month<-'08'
+This_month_text<-'Ago'
 ```
 
 ```{r}
@@ -500,7 +531,7 @@ devtools::check()
 Create data frame with trip_start, trip_end, duration, gap minimum, gap maximum per trip
 
 ```{r}
-Trips_04params<-calculate_params(my_locs=Trips_03trips,
+Trips_04params<-calculate_params(my_locs=GSM_trips,
                                  my_daytime='daytime',
                                  my_format="%Y-%m-%d %H:%M:%S",
                                  my_units="hours",
@@ -868,7 +899,7 @@ Locs_01class<-classify_locs(Inter_params=Interpolation_params,
 
 # --------------------
 
-# 4. Reevaluate
+# 4. Gulls just do whatever they want
 
 ## Reevaluate trips
 
@@ -879,22 +910,30 @@ Some trips might not seem real, is it because of the resolution or because the a
 Which trips were longer than 24 hrs?
 
 ```{r}
-Trips_05params %>%
-  arrange(-duration)
+Reevaluate<-Params_resolution %>%
+  dplyr::filter(params_analyses!='shorter_than_24h_keep_centralloc')
 ```
 
+Are this outliers due to gaps of the intervals?
+Large intervals might cause that the bird entering back to the colony is missed.
+
+```{r}
+print(paste0("Max gaps was: ",
+             round(Reevaluate$max_gap,2),
+             ' mins. If the interval is more than 60 minutes in duration that could be a plausible explaination and then it should be eliminated. If the interval is less than 60 minutes in duration consider it can be a change in central location of the bird.'))
+```
 
 ## Step 2: extract locs
 
 Identify ids and use the ids to subset the locations 
 
 ```{r}
-Reevaluate_tripid<-'trip_00163'
+Reevaluate_tripid<-unique(Reevaluate$trip_id)
 Reevaluate_tripid
 ```
 
 ```{r}
-Reevaluate_01locs<-Trips_03trips %>%
+Reevaluate_01locs<-GSM_trips %>%
   dplyr::filter(trip_number %in% Reevaluate_tripid)%>%
   dplyr::relocate(ID,trip_number,daytime,gaps_min)
 head(Reevaluate_01locs)
@@ -962,7 +1001,11 @@ new_central_buffer<-create_buffer(central_point=new_central_location,buffer_km=0
 Convert the locations into a sf
 
 ```{r}
-Reevaluate_01locs<-Reevaluate_01locs%>%
+Reevaluate_tripid<-'trip_00512'
+```
+
+```{r}
+Reevaluate_01locs<-GSM_trips %>%
   dplyr::filter(trip_number %in% Reevaluate_tripid)%>%
   dplyr::relocate(ID,trip_number,daytime,gaps_min)
 ```
@@ -1010,7 +1053,7 @@ devtools::document()
 ```
 
 ```{r}
-Reevaluate_02sf<-from_df_to_st(Reevaluate_01locs)
+Reevaluate_02sf<-from_df_to_st(Reevaluate_locs)
 ```
 
 ## Step 6: over
@@ -1068,7 +1111,7 @@ over<-function(my_locations=my_locations,my_polygon=my_polygon){
 Check nrows should correspond.
 
 ```{r}
-Reevaluate_01locs$central_location<- larus::over(my_locations=Reevaluate_02sf,
+Reevaluate_locs$central_location<- larus::over(my_locations=Reevaluate_sf,
                                                my_polygon=Reevaluate_polygon)
 ```
 
@@ -1088,7 +1131,7 @@ devtools::check()
 ```
 
 ```{r}
-Previous_params<-Trips_05params$trip_id
+Previous_params<-GSM_params$trip_id
 ```
 
 ```{r, message=FALSE}
@@ -1155,7 +1198,7 @@ add_trip_number<-function(my_df,my_trip_number_sequence){
 ```
 
 ```{r}
-Reevaluate_02trips<-add_trip_number(my_df=Reevaluate_01locs,
+Reevaluate_04trips<-add_trip_number(my_df=Reevaluate_trips,
                                     my_trip_number_sequence=new_trip_number_sequence)
 ```
 
@@ -1163,7 +1206,7 @@ Plot to check that the central location corresponds to your example
 
 ```{r, eval=FALSE}
 new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
-plot_trips(my_locs=Reevaluate_02trips,my_central_location=new_central_location)
+plot_trips(my_locs=Reevaluate_04trips,my_central_location=new_central_location)
 ```
 
 ## Step 8: calculate params
@@ -1171,7 +1214,7 @@ plot_trips(my_locs=Reevaluate_02trips,my_central_location=new_central_location)
 Identify trip_start, end, duration and gaps
 
 ```{r}
-Reevaluate_03params<-calculate_params(my_locs=Reevaluate_02trips,
+Reevaluate_05params<-calculate_params(my_locs=Reevaluate_trips,
                                  my_daytime='daytime',
                                  my_format=  "%Y-%m-%d %H:%M:%S",
                                  my_units="hours",
@@ -1183,7 +1226,7 @@ Reevaluate_03params<-calculate_params(my_locs=Reevaluate_02trips,
 Add this information on the parameters
 
 ```{r}
-Reevaluate_03params<-Reevaluate_03params %>%
+Reevaluate_05params<-Reevaluate_05params %>%
   dplyr::mutate(trip_month_id=paste0(This_month_text,"_b_",trip_id))%>%
   dplyr::mutate(central_loc='south_of_colony')
 ```
@@ -1193,7 +1236,7 @@ Reevaluate_03params<-Reevaluate_03params %>%
 Check the new trip separation
 
 ```{r, eval=FALSE}
-plot_trips(my_locs=Reevaluate_02trips,my_central_location = new_central_location)+
+plot_trips(my_locs=Reevaluate_04trips,my_central_location = new_central_location)+
   ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='blue',shape=17, size=5)
 ```
 
@@ -1202,8 +1245,12 @@ plot_trips(my_locs=Reevaluate_02trips,my_central_location = new_central_location
 Add classification information to see if fits the criteria
 
 ```{r}
-Params_04reevaluate<-classify_params(my_params=Reevaluate_03params)
+Params_03reevaluate<-classify_params(my_params=Reevaluate_05params)
 ```
+
+## Subset evaluation
+
+This steps can be made separately by trip
 
 ```{r, eval=FALSE, echo=FALSE}
 usethis::use_r("subset_reevaluation")
@@ -1251,6 +1298,13 @@ subset_reevaluation<-function(my_tripid=my_tripid,
 }
 ```
 
+```{r, eval=FALSE}
+subset_reevaluation(my_trip=GSM_trips,my_tripid='trip_00528',
+                    new_central_location=data.frame(Longitude=-110.32,Latitude=24.15),
+                    old_central_location=data.frame(Longitude=-110.34,Latitude=24.28))
+```
+## identify_trip_reevaluation
+
 ```{r, eval=FALSE, echo=FALSE}
 usethis::use_r("identify_trips_reevaluation")
 identify_trips_reevaluation<-function(my_trip=my_trip,my_central_location=my_central_location,my_previous_params=my_previous_params){
@@ -1271,7 +1325,6 @@ identify_trips_reevaluation<-function(my_trip=my_trip,my_central_location=my_cen
 }
 ```
 
-
 # --------------------
 
 # 5. Merge 
@@ -1282,7 +1335,7 @@ Add criteria classifications
 
 ```{r}
 Params_merged<-rbind(Params_02criteria %>% dplyr::filter(!trip_id %in% Reevaluate_tripid),
-                     Params_04reevaluate)
+                     Params_03reevaluate)
 ```
 
 ## Step 2: Locs merged
@@ -1290,7 +1343,7 @@ Params_merged<-rbind(Params_02criteria %>% dplyr::filter(!trip_id %in% Reevaluat
 Use the parameters information to add classification to locations
 
 ```{r}
-Locs_merged <-rbind(Trips_03trips %>% 
+Locs_merged <-rbind(GSM_trips %>% 
                       dplyr::filter(!trip_number %in% Reevaluate_tripid)%>%
                       dplyr::select(ID,daytime,season,month,
                              Longitude,Latitude,
@@ -1298,7 +1351,7 @@ Locs_merged <-rbind(Trips_03trips %>%
                              gaps_min,battery_charge,
                              trip_number),
                     
-                    Reevaluate_02trips %>%
+                    Reevaluate_04trips %>%
                       dplyr::select(ID,daytime,season,month,
                              Longitude,Latitude,
                              central_base,inside,num_seq,
@@ -1518,7 +1571,7 @@ Maxdist_params<-calculate_maxdist(my_data =GSM_trips,
 
 # --------------------
 
-# 8. Interpolations
+# 8. Candidates for interpolation
 
 Whether to interpolate the data depends on your research goals and the nature of the gaps.
 
@@ -1528,6 +1581,185 @@ Here’s a breakdown of considerations to help you decide:
 - Long Gaps: If the gaps are long (e.g., several hours or days), interpolation might introduce unrealistic results, especially if the bird’s movement during that time period was unknown. Interpolating long gaps could lead to misleading conclusions about the bird’s actual path or behavior.
 If your study’s analysis can handle missing data or gaps (e.g., for high-level migration patterns), you might consider leaving the gaps unfilled. This avoids the risk of introducing erroneous data but may reduce the overall precision.
 If your analysis is based on trajectory or movement behavior, you could use gap-filling approaches like predicting the bird’s behavior based on its last known location and surrounding environmental context (such as weather, time of day, etc.).
+
+
+## Step 1: exclude trips longer than 24 hrs with gaps larger than 60 minutes
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_01params<-Inter_params %>%
+  dplyr::filter(interpolation=='gapsless60mins_shorter24hr_canditate_interpolate')
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Interpolation_params<-Inter_01params
+#Move to folder data
+save(Interpolation_params, file = "Interpolation_params.RData", version = 2)
+#Run in console, not Rmd
+usethis::use_r("Interpolation_params")
+devtools::document()
+devtools::check()
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_02locs<-classify_locs(Inter_params=Interpolation_params,
+                            Inter_locs=GSM_trips)
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_02locs %>%
+  dplyr::group_by(trip_size)%>%
+  dplyr::tally()
+```
+
+## Step 2: check locations
+
+The part of don't interpolate would be large because it includes resting and overnight locations
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_02locs %>%
+  dplyr::group_by(interpolation)%>%
+  dplyr::tally()
+```
+
+```{r,eval=FALSE, echo=FALSE}
+my_central_location<-data.frame(Longitude=-110.33979846296234,Latitude=24.28728834326802)
+```
+
+```{r,eval=FALSE, echo=FALSE}
+plot_trips(my_locs=Inter_02locs,my_central_location = my_central_location)
+```
+
+## Step 3: check included
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_03included <- Inter_02locs %>%
+  dplyr::filter(interpolation == 'gapsless60mins_shorter24hr_canditate_interpolate')
+```
+
+```{r,eval=FALSE, echo=FALSE, fig.height=4}
+plot_trips(my_locs=Inter_03included,my_central_location = my_central_location)
+```
+
+## Step 4: check excluded
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_04excluded <- Inter_02locs %>%
+  #dplyr::filter(trip_size == 'trip_longer_than_30mins')%>%
+  dplyr::filter(interpolation != 'gapsless60mins_shorter24hr_canditate_interpolate')
+```
+
+```{r, eval=FALSE, fig.height=20, fig.width=20}
+plot_trips(my_locs=Inter_04excluded,my_central_location = my_central_location)+
+  ggplot2::facet_wrap(~trip_number)
+```
+
+Trip 0512 Seem legit, and maybe should be reconsidered if central location is identified. 
+Look genuinely that the bird change location.
+
+```{r,eval=FALSE, echo=FALSE}
+this_trip<-'trip_00512'
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_params %>%
+  dplyr::filter(trip_id==this_trip)
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_05reevaluate<-Inter_04excluded %>%
+  dplyr::filter(trip_number==this_trip)
+```
+
+```{r,eval=FALSE, echo=FALSE}
+dplyr::first(Inter_05reevaluate$daytime)
+dplyr::last(Inter_05reevaluate$daytime)
+```
+
+## Step 5: new central location
+
+```{r,eval=FALSE, echo=FALSE}
+plot_check<-function(my_locs=my_locs,my_central_location=my_central_location){
+  ggplot2::ggplot()+
+  ggplot2::geom_point(data = my_locs, ggplot2::aes(x=Longitude, y = Latitude),
+             color='black',size = 0.8,alpha=0.4)+
+  ggplot2::geom_point(data=my_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='red',shape=17, size=5)+
+  ggplot2::geom_density_2d_filled(data = my_locs, ggplot2::aes(x = Longitude, y = Latitude),alpha = 0.5)+
+  ggplot2::theme_bw()+
+  ggplot2::theme(legend.position = 'none')+
+  ggplot2::ggtitle('Check that the triangle is close to the highest location concentration- \nThis should be your central location-  \nIf the central location is shifted -  \nPlease recalculate using another central location')}
+```
+
+```{r,eval=FALSE, echo=FALSE}
+new_central_location<-data.frame(Longitude=-110.325,Latitude=24.17)
+plot_check(my_locs=Inter_05reevaluate,my_central_location = new_central_location)+
+  ggplot2::geom_point(data=new_central_location, ggplot2::aes(x=Longitude, y=Latitude),color='red',shape=17, size=5)
+```
+
+## Step 6: reevaluate_params
+
+```{r,eval=FALSE, echo=FALSE}
+head(Inter_05reevaluate)
+```
+
+```{r,eval=FALSE, echo=FALSE}
+this_locs=Inter_05reevaluate
+this_central_location=new_central_location
+this_previous=Inter_params
+```
+
+```{r,eval=FALSE, echo=FALSE}
+recalculate_params<-function(this_locs,
+                            this_central_location,
+                            this_previous){
+  
+## create_buffer
+my_central_buffer<-create_buffer(central_point=this_central_location,buffer_km=0.3)
+
+## from_df_to_sf
+my_sf<-from_df_to_st(this_locs)
+
+## over
+my_over<- over(my_locations=my_sf,my_polygon=my_central_buffer)
+this_locs$central_location<-my_over
+
+## continue_trip_sequence
+my_trip_number_sequence<-continue_trip_sequence(my_previous=this_previous$trip_id)
+
+## add_trip_number
+my_trips<-add_trip_number(my_df=this_locs,
+                          my_trip_number_sequence=my_trip_number_sequence)
+
+## calculate_params
+my_params<-calculate_params(my_locs=my_trips,
+                                 my_daytime='daytime',
+                                 my_format=  "%Y-%m-%d %H:%M:%S",
+                                 my_units="hours",
+                                 my_separator="trip_number")
+
+return(my_params)}
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_06params<-recalculate_params(this_locs=Inter_05reevaluate,
+                                   this_central_location=new_central_location,
+                                   this_previous=Inter_params)
+Inter_06params
+```
+
+```{r,eval=FALSE, echo=FALSE}
+This_month_text<-"Ago"
+```
+
+```{r,eval=FALSE, echo=FALSE}
+Inter_06params<-Inter_06params%>%
+  dplyr::mutate(trip_month_id=paste0(This_month_text,"_c_",trip_id))%>%
+  dplyr::mutate(central_loc='south_of_colony')
+Inter_06params
+```
+
+# --------------------
+
+# 8. Interpolation
 
 ## Step 1: interpolate
 
@@ -1610,16 +1842,6 @@ interpolate_trips<-function(my_df=my_df,
 Interpolation_trips<-Interpolation_trips
 ```
 
-Check criteria
-
-```{r}
-Interpolation_trips %>%
-  group_by(interpolation)%>%
-  tally()
-```
-
-Funcion interpolate_trips
-
 ```{r}
 Interpolated_locs<-interpolate_trips(my_df=Interpolation_trips,
                                     interval='900 sec',
@@ -1632,5 +1854,31 @@ Interpolated_locs<-interpolate_trips(my_df=Interpolation_trips,
 
 # --------------------
 
+# 9. Habitat use
+
+## Step 1. Polygon
+
+```{r}
+habitat_02water_01polygon<-read_sf(file.path(ShapefilesDir,'Opensea.shp'))
+```
+
+or 
+
+```{r}
+new_central_buffer<-create_buffer(central_point=new_central_location,buffer_km=0.3)
+```
+
+## Step 2. Data frame to st
+
+```{r}
+Reevaluate_02sf<-from_df_to_st(Reevaluate_locs)
+```
+
+## Step 3: Over
+
+```{r}
+Reevaluate_locs$central_location<- larus::over(my_locations=Reevaluate_sf,
+                                               my_polygon=Reevaluate_polygon)
+```
 
 # end of document
